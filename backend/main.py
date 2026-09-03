@@ -111,6 +111,12 @@ async def get_flux(
 ):
     records = data_loader.load_flux(limit=limit)
 
+    if records is None:
+        raise HTTPException(
+            status_code=503,
+            detail="Flux data not available yet — run preprocessing pipeline first (pipeline/preprocessing.py).",
+        )
+
     # ── Replay mode: stream as SSE ────────────────────────────────────────────
     if replay:
         logger.info("Replay mode activated at %.1f×", speed)
@@ -163,6 +169,12 @@ async def get_events(
 ):
     events = data_loader.load_events()
 
+    if events is None:
+        raise HTTPException(
+            status_code=503,
+            detail="Event data not available yet — run detection pipeline first (pipeline/detection.py).",
+        )
+
     # Optional server-side filtering
     if flare_class:
         events = [e for e in events if e.get("flare_class", "").upper() == flare_class.upper()]
@@ -192,6 +204,13 @@ async def get_predictions(
     limit: Annotated[Optional[int], Query(ge=1, description="Limit number of predictions")] = None,
 ):
     preds = data_loader.load_predictions()
+
+    if preds is None:
+        raise HTTPException(
+            status_code=503,
+            detail="Prediction data not available yet — run ML pipeline first (pipeline/predict.py).",
+        )
+
     if limit:
         preds = preds[:limit]
 
@@ -227,6 +246,11 @@ async def get_validation(
     ] = 10.0,
 ):
     detected = data_loader.load_events()
+    if detected is None:
+        raise HTTPException(
+            status_code=503,
+            detail="Event data not available yet — run detection pipeline first (pipeline/detection.py).",
+        )
     goes_catalog = data_loader.load_goes_catalog()
 
     raw_results = goes_validator.match_events_to_goes(
