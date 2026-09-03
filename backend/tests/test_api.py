@@ -53,10 +53,14 @@ class TestFlux:
         data = client.get("/api/flux").json()
         if data["data"]:
             point = data["data"][0]
+            # Fixed API contract: timestamp, solexs_flux, hel1os_flux only
             assert "timestamp" in point
             assert "solexs_flux" in point
             assert "hel1os_flux" in point
-            assert "quality_flag" in point
+            # quality_flag is a pipeline-internal field — must NOT appear in the API response
+            assert "quality_flag" not in point, (
+                "quality_flag is an internal preprocessing field and must not be in the API response"
+            )
 
     def test_flux_limit_param(self):
         data = client.get("/api/flux?limit=5").json()
@@ -157,16 +161,21 @@ class TestValidation:
 
     def test_validation_top_level_schema(self):
         data = client.get("/api/validation").json()
-        for key in ("results", "total_events", "matched", "unmatched", "possible_goes_misses"):
+        # Fixed contract: results, total_events, matched, unmatched
+        for key in ("results", "total_events", "matched", "unmatched"):
             assert key in data, f"Missing key: {key}"
 
     def test_validation_result_schema(self):
         data = client.get("/api/validation").json()
         if data["results"]:
             result = data["results"][0]
-            for key in ("event_id", "goes_match", "goes_class",
-                         "time_diff_minutes", "possible_goes_miss"):
+            # Fixed contract: event_id, goes_match, goes_class, time_diff_minutes
+            for key in ("event_id", "goes_match", "goes_class", "time_diff_minutes"):
                 assert key in result, f"Missing key: {key}"
+            # possible_goes_miss is internal — must NOT appear in the API response
+            assert "possible_goes_miss" not in result, (
+                "possible_goes_miss is an internal field and must not be in the API response"
+            )
 
     def test_validation_counts_are_consistent(self):
         data = client.get("/api/validation").json()

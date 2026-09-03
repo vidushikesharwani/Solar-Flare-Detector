@@ -4,15 +4,16 @@ Unit tests for the GOES cross-check matching logic.
 
 Tests cover:
   - Exact match within window
-  - Just-outside window (no match)
+  - Just-outside window (no match, not treated as FP)
   - Closest match when multiple GOES entries exist
-  - possible_goes_miss flagging
+  - Unmatched events returning correct contract fields
   - Signed time_diff_minutes direction
   - Empty catalog / empty events edge cases
   - Boundary condition: event exactly at ±10 min
 
-Run with:
-    pytest backend/tests/test_validation.py -v
+Note: possible_goes_miss is an internal concept (logged but NOT in the API response).
+Tests verify that unmatched events return goes_match=False with goes_class=None
+and time_diff_minutes=None — the correct spec-compliant response.
 """
 
 from __future__ import annotations
@@ -55,7 +56,8 @@ class TestExactMatch:
         assert results[0]["goes_match"] is True
         assert results[0]["time_diff_minutes"] == 0.0
         assert results[0]["goes_class"] == "M3.0"
-        assert results[0]["possible_goes_miss"] is False
+        # possible_goes_miss is internal — must not be in the returned dict
+        assert "possible_goes_miss" not in results[0]
 
     def test_match_within_window(self):
         """Event 5 minutes after GOES peak — should match."""
@@ -88,7 +90,11 @@ class TestWindowBoundary:
         catalog = [make_goes("G1", "2024-03-15T06:00:00Z")]
         results = match_events_to_goes(events, catalog, match_window_minutes=10.0)
         assert results[0]["goes_match"] is False
-        assert results[0]["possible_goes_miss"] is True
+        # Unmatched events must not be automatically labelled as false positives.
+        # possible_goes_miss is internal (logged) — not returned in the dict.
+        assert "possible_goes_miss" not in results[0]
+        assert results[0]["goes_class"] is None
+        assert results[0]["time_diff_minutes"] is None
 
 
 class TestMultipleGoesEntries:
@@ -105,21 +111,26 @@ class TestMultipleGoesEntries:
         assert results[0]["time_diff_minutes"] == pytest.approx(2.0)
 
 
-class TestPossibleGoesMiss:
-    def test_no_catalog_entry_flags_possible_miss(self):
+
+class TestUnmatchedNotFP:
+    """Verify unmatched events are NOT auto-labelled as false positives."""
+
+    def test_no_catalog_entry_returns_goes_match_false(self):
+        """Empty catalog → goes_match=False with null fields (not a false positive label)."""
         events = [make_event("E1", "2024-03-15T06:00:00Z")]
         results = match_events_to_goes(events, goes_catalog=[], match_window_minutes=10.0)
         assert results[0]["goes_match"] is False
-        assert results[0]["possible_goes_miss"] is True
         assert results[0]["goes_class"] is None
         assert results[0]["time_diff_minutes"] is None
+        # Internal field must not leak into the returned dict
+        assert "possible_goes_miss" not in results[0]
 
-    def test_outside_window_also_flags_miss(self):
+    def test_outside_window_returns_goes_match_false(self):
         events = [make_event("E1", "2024-03-15T06:00:00Z")]
         catalog = [make_goes("G1", "2024-03-15T08:00:00Z")]  # 2 hours away
         results = match_events_to_goes(events, catalog, match_window_minutes=10.0)
         assert results[0]["goes_match"] is False
-        assert results[0]["possible_goes_miss"] is True
+        assert "possible_goes_miss" not in results[0]
 
 
 class TestEdgeCases:
@@ -128,12 +139,14 @@ class TestEdgeCases:
         results = match_events_to_goes([], catalog)
         assert results == []
 
-    def test_empty_catalog_all_flagged_as_misses(self):
+    def test_empty_catalog_all_unmatched(self):
         events = [make_event("E1", "2024-03-15T06:00:00Z"),
                   make_event("E2", "2024-03-15T10:00:00Z")]
         results = match_events_to_goes(events, goes_catalog=[])
         assert len(results) == 2
-        assert all(r["possible_goes_miss"] for r in results)
+        # All unmatched — but not auto-labelled as false positives
+        assert all(r["goes_match"] is False for r in results)
+        assert all("possible_goes_miss" not in r for r in results)
 
     def test_multiple_events_independently_matched(self):
         events = [
@@ -152,17 +165,19 @@ class TestEdgeCases:
 
 class TestSummarise:
     def test_summarise_counts(self):
+        # summarise_validation only receives the contract dict keys
         results = [
-            {"goes_match": True,  "possible_goes_miss": False},
-            {"goes_match": True,  "possible_goes_miss": False},
-            {"goes_match": False, "possible_goes_miss": True},
-            {"goes_match": False, "possible_goes_miss": False},
+            {"goes_match": True},
+            {"goes_match": True},
+            {"goes_match": False},
+            {"goes_match": False},
         ]
         summary = summarise_validation(results)
         assert summary["total_events"] == 4
         assert summary["matched"] == 2
         assert summary["unmatched"] == 2
-        assert summary["possible_goes_misses"] == 1
+        # possible_goes_misses not in the summary dict — it's internal
+        assert "possible_goes_misses" not in summary
 
     def test_summarise_empty(self):
         summary = summarise_validation([])

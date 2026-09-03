@@ -13,11 +13,10 @@ from pydantic import BaseModel, Field
 # ─── /api/flux ────────────────────────────────────────────────────────────────
 
 class FluxPoint(BaseModel):
-    """Single aligned flux sample (Prakriti's preprocessing output)."""
+    """Single aligned flux sample — API contract: timestamp, solexs_flux, hel1os_flux."""
     timestamp: str = Field(..., description="ISO-8601 UTC timestamp")
     solexs_flux: Optional[float] = Field(None, description="SoLEXS 1–15 keV flux (W/m²)")
     hel1os_flux: Optional[float] = Field(None, description="HEL1OS 12–200 keV flux (counts/s)")
-    quality_flag: int = Field(0, description="0=good, 1=gap/dropout, 2=saturated, 3=noisy")
 
 
 class FluxResponse(BaseModel):
@@ -69,7 +68,7 @@ class PredictionsResponse(BaseModel):
 # ─── /api/validation ──────────────────────────────────────────────────────────
 
 class ValidationResult(BaseModel):
-    """GOES cross-check result for a detected event."""
+    """GOES cross-check result — fixed contract: event_id, goes_match, goes_class, time_diff_minutes."""
     event_id: str
     goes_match: bool
     goes_class: Optional[str] = Field(None, description="GOES assigned class, None if no match")
@@ -77,10 +76,8 @@ class ValidationResult(BaseModel):
         None,
         description="Signed offset: our peak_time minus GOES peak_time (minutes)"
     )
-    possible_goes_miss: bool = Field(
-        False,
-        description="True when our detector fired but no GOES entry exists within window"
-    )
+    # NOTE: possible_goes_miss is tracked internally in validation.py but is NOT
+    # part of the fixed API contract — do not expose it here.
 
 
 class ValidationResponse(BaseModel):
@@ -88,7 +85,6 @@ class ValidationResponse(BaseModel):
     total_events: int
     matched: int
     unmatched: int
-    possible_goes_misses: int
 
 
 # ─── /api/metrics ─────────────────────────────────────────────────────────────

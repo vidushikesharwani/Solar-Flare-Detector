@@ -5,11 +5,15 @@ GOES cross-check validation module.
 Given our detected flare events and a local GOES catalog, this module:
   1. Matches each detected event to the nearest GOES entry within ±MATCH_WINDOW_MINUTES.
   2. Records the time offset and GOES assigned class.
-  3. Flags "possible GOES misses" — events we detected but GOES has no record of —
-     rather than silently treating them as false positives.
+  3. Internally identifies "possible GOES misses" (events we detected but GOES has no
+     record of) to avoid treating them as false positives. This determination is
+     used for logging only — it is NOT exposed in the API response schema.
 
-Design is intentionally file-agnostic: swap `load_goes_catalog()` with a
-live NOAA API call and nothing else needs to change.
+Fixed API output per event: {event_id, goes_match, goes_class, time_diff_minutes}
+
+Design note: the GOES data source is abstracted through the `goes_catalog` parameter
+so that a LocalGOESProvider or a future LiveGOESProvider can be swapped in without
+rewriting any matching logic here.
 """
 
 from __future__ import annotations
@@ -82,7 +86,6 @@ def match_events_to_goes(
                 "goes_match": False,
                 "goes_class": None,
                 "time_diff_minutes": None,
-                "possible_goes_miss": False,
             })
             continue
 
@@ -103,7 +106,6 @@ def match_events_to_goes(
                 "goes_match": True,
                 "goes_class": best_match.get("goes_class"),
                 "time_diff_minutes": round(best_diff, 2),
-                "possible_goes_miss": False,
             })
             logger.debug(
                 "Event %s matched GOES %s (Δ=%.1f min)",
@@ -111,17 +113,20 @@ def match_events_to_goes(
             )
         else:
             # No GOES match found.
-            # Flag as possible_goes_miss if our detector had high confidence —
-            # GOES catalog is not 100% complete, especially for weaker flares
-            # or events outside GOES field-of-view.
+            # Internally we consider this a "possible GOES miss" — GOES catalog is
+            # not 100% complete (coverage gaps, weak flares below GOES threshold,
+            # or events outside GOES field-of-view). We log it but do NOT
+            # automatically label it a false positive in the API response.
             results.append({
                 "event_id": event_id,
                 "goes_match": False,
                 "goes_class": None,
                 "time_diff_minutes": None,
-                "possible_goes_miss": True,
             })
-            logger.info("Event %s: no GOES match — flagged as possible GOES miss", event_id)
+            logger.info(
+                "Event %s: no GOES match within ±%.1f min — possible GOES miss (not auto-labelled FP)",
+                event_id, match_window_minutes,
+            )
 
     return results
 
@@ -132,14 +137,13 @@ def summarise_validation(results: list[dict]) -> dict:
 
     Returns
     -------
-    dict with keys: total_events, matched, unmatched, possible_goes_misses
+    dict with keys: total_events, matched, unmatched
+    (possible_goes_misses is tracked internally via logs, not exposed in API)
     """
     total = len(results)
     matched = sum(1 for r in results if r["goes_match"])
-    possible_misses = sum(1 for r in results if r.get("possible_goes_miss"))
     return {
         "total_events": total,
         "matched": matched,
         "unmatched": total - matched,
-        "possible_goes_misses": possible_misses,
     }

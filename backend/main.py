@@ -216,8 +216,8 @@ async def get_predictions(
     description=(
         "Cross-matches our detected events against the NOAA GOES flare catalog "
         "(local offline copy). Returns match status, GOES class, and time offset "
-        "for each event. Events with no GOES match are flagged as "
-        "`possible_goes_miss` rather than silently treated as false positives."
+        "for each event. Unmatched events are not automatically treated as false "
+        "positives — GOES coverage is incomplete, so misses are logged separately."
     ),
 )
 async def get_validation(
