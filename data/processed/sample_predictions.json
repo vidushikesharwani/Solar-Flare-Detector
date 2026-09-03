@@ -1,0 +1,80 @@
+[
+  {
+    "timestamp": "2024-03-15T06:20:00Z",
+    "flare_probability": 0.91,
+    "predicted_class": "X",
+    "confidence": 0.88,
+    "top_features": {
+      "solexs_roc_60s": 0.42,
+      "solexs_rolling_mean_90m": 0.28,
+      "hel1os_peak_amplitude": 0.15,
+      "solexs_flux_zscore": 0.10,
+      "hel1os_roc_30s": 0.05
+    }
+  },
+  {
+    "timestamp": "2024-03-15T06:24:00Z",
+    "flare_probability": 0.97,
+    "predicted_class": "X",
+    "confidence": 0.95,
+    "top_features": {
+      "solexs_roc_60s": 0.51,
+      "solexs_rolling_mean_90m": 0.25,
+      "hel1os_peak_amplitude": 0.14,
+      "solexs_flux_zscore": 0.07,
+      "hel1os_roc_30s": 0.03
+    }
+  },
+  {
+    "timestamp": "2024-03-15T10:15:00Z",
+    "flare_probability": 0.76,
+    "predicted_class": "M",
+    "confidence": 0.72,
+    "top_features": {
+      "solexs_roc_60s": 0.38,
+      "solexs_rolling_mean_90m": 0.31,
+      "hel1os_peak_amplitude": 0.18,
+      "solexs_flux_zscore": 0.09,
+      "hel1os_roc_30s": 0.04
+    }
+  },
+  {
+    "timestamp": "2024-03-15T14:35:00Z",
+    "flare_probability": 0.54,
+    "predicted_class": "C",
+    "confidence": 0.61,
+    "top_features": {
+      "solexs_roc_60s": 0.30,
+      "solexs_rolling_mean_90m": 0.35,
+      "hel1os_peak_amplitude": 0.20,
+      "solexs_flux_zscore": 0.10,
+      "hel1os_roc_30s": 0.05
+    }
+  },
+  {
+    "timestamp": "2024-03-16T08:52:00Z",
+    "flare_probability": 0.99,
+    "predicted_class": "X",
+    "confidence": 0.97,
+    "top_features": {
+      "solexs_roc_60s": 0.55,
+      "solexs_rolling_mean_90m": 0.22,
+      "hel1os_peak_amplitude": 0.13,
+      "solexs_flux_zscore": 0.07,
+      "hel1os_roc_30s": 0.03
+    }
+  },
+  {
+    "timestamp": "2024-03-17T04:18:00Z",
+    "flare_probability": 0.32,
+    "predicted_class": "B",
+    "confidence": 0.55,
+    "top_features": {
+      "solexs_roc_60s": 0.20,
+      "solexs_rolling_mean_90m": 0.40,
+      "hel1os_peak_amplitude": 0.25,
+      "solexs_flux_zscore": 0.10,
+      "hel1os_roc_30s": 0.05
+    }
+  }
+]
