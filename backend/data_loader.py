@@ -161,7 +161,8 @@ def get_model_version() -> str | None:
     if not version_files:
         return None
     try:
-        with version_files[-1].open() as fh:
+        with version_files[-1].open(encoding="utf-8") as fh:
             return json.load(fh).get("version")
-    except Exception:
+    except Exception as exc:
+        logger.warning("Failed to read model version file %s: %s", version_files[-1], exc)
         return None

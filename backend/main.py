@@ -96,6 +96,18 @@ async def health_check() -> dict:
 @app.get(
     "/api/flux",
     response_model=FluxResponse,
+    responses={
+        200: {
+            "content": {
+                "application/json": {},
+                "text/event-stream": {
+                    "schema": {"type": "string"},
+                    "description": "Server-Sent Events (SSE) replay stream when replay=true",
+                },
+            },
+            "description": "Aligned flux time series data (JSON) or replay stream (SSE)",
+        }
+    },
     tags=["Data"],
     summary="Aligned X-ray flux time series",
     description=(

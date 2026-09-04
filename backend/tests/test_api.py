@@ -5,7 +5,7 @@ API integration tests using pytest + httpx TestClient.
 Strategy:
   - /api/flux, /api/events, /api/predictions: mock data_loader so tests run
     without needing real pipeline output on disk.
-  - /api/validation: uses the real GOES catalog (data/goes_catalog/goes_events.json)
+  - /api/validation: uses the committed offline GOES catalog (data/goes_catalog/goes_events.json)
     with mocked events to verify matching logic end-to-end.
   - /api/metrics: mocked since training hasn't run yet.
   - When pipeline data exists on disk the mocks are bypassed by the actual loaders.
@@ -227,6 +227,13 @@ class TestValidation:
     def test_validation_503_without_events(self):
         with patch("backend.data_loader.load_events", return_value=None):
             assert client.get("/api/validation").status_code == 503
+
+    def test_validation_catalog_exists_and_populated(self):
+        """Ensure the offline GOES catalog file exists on disk and is populated."""
+        from backend.data_loader import GOES_CATALOG, load_goes_catalog
+        assert GOES_CATALOG.is_file(), f"GOES catalog file missing at {GOES_CATALOG}"
+        catalog = load_goes_catalog()
+        assert isinstance(catalog, list) and len(catalog) > 0, "GOES catalog is empty or invalid"
 
 
 # ─── /api/metrics ─────────────────────────────────────────────────────────────
