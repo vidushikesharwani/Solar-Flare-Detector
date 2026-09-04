@@ -56,6 +56,9 @@ async def stream_flux_replay(
         yield "data: {}\n\n"
         return
 
+    if speed <= 0:
+        raise ValueError("speed must be > 0")
+
     delay = cadence_seconds / speed
     total = len(flux_records)
     logger.info("Starting replay: %d points at %.1f× speed (%.3fs delay)", total, speed, delay)

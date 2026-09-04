@@ -73,7 +73,11 @@ def load_flux(limit: int | None = None) -> list[dict] | None:
         return None
 
     df.columns = [c.lower().strip() for c in df.columns]
-    for col in ("timestamp", "solexs_flux", "hel1os_flux"):
+    if "timestamp" not in df.columns:
+        logger.error("Flux parquet missing required 'timestamp' column: %s", path)
+        return None
+
+    for col in ("solexs_flux", "hel1os_flux"):
         if col not in df.columns:
             df[col] = None
 

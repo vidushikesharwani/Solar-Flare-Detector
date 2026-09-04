@@ -259,3 +259,30 @@ class TestMetrics:
             for point in client.get("/api/metrics").json()["training_curve"]:
                 assert "epoch" in point
                 assert "train_loss" in point
+
+
+# ─── Edge cases & defensive checks ───────────────────────────────────────────
+
+def test_load_flux_missing_timestamp_returns_none():
+    import pandas as pd
+    from backend.data_loader import load_flux
+
+    bad_df = pd.DataFrame({"solexs_flux": [1.0, 2.0], "hel1os_flux": [10.0, 20.0]})
+    with patch("backend.data_loader._find_latest", return_value="fake_aligned.parquet"):
+        with patch("backend.data_loader._load_parquet", return_value=bad_df):
+            assert load_flux() is None
+
+
+@pytest.mark.asyncio
+async def test_replay_speed_zero_or_negative_raises_value_error():
+    from backend.replay import stream_flux_replay
+
+    records = [{"timestamp": "2024-03-15T06:00:00Z", "solexs_flux": 1e-7, "hel1os_flux": 500.0}]
+    with pytest.raises(ValueError, match="speed must be > 0"):
+        async for _ in stream_flux_replay(records, speed=0):
+            pass
+
+    with pytest.raises(ValueError, match="speed must be > 0"):
+        async for _ in stream_flux_replay(records, speed=-5.0):
+            pass
+

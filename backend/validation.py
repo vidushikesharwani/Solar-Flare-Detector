@@ -19,7 +19,7 @@ rewriting any matching logic here.
 from __future__ import annotations
 
 import logging
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timezone
 from typing import Optional
 
 logger = logging.getLogger(__name__)
@@ -61,9 +61,8 @@ def match_events_to_goes(
     -------
     list[dict]
         One entry per detected event:
-        {event_id, goes_match, goes_class, time_diff_minutes, possible_goes_miss}
+        {event_id, goes_match, goes_class, time_diff_minutes}
     """
-    window = timedelta(minutes=match_window_minutes)
     results: list[dict] = []
 
     # Pre-parse GOES peak times once for efficiency
