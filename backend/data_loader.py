@@ -100,6 +100,10 @@ def load_events() -> list[dict] | None:
     data = _load_json(path)
     if data is None:
         logger.warning("No events JSON found in %s", DATA_PROCESSED)
+        return None
+    if not isinstance(data, list):
+        logger.error("Events JSON is not a list: %s", path)
+        return None
     return data
 
 
@@ -113,6 +117,10 @@ def load_predictions() -> list[dict] | None:
     data = _load_json(path)
     if data is None:
         logger.warning("No predictions JSON found in %s", DATA_PROCESSED)
+        return None
+    if not isinstance(data, list):
+        logger.error("Predictions JSON is not a list: %s", path)
+        return None
     return data
 
 
@@ -137,6 +145,9 @@ def load_goes_catalog() -> list[dict]:
     data = _load_json(GOES_CATALOG)
     if data is None:
         logger.error("GOES catalog not found at %s", GOES_CATALOG)
+        return []
+    if not isinstance(data, list):
+        logger.error("GOES catalog at %s is not a list", GOES_CATALOG)
         return []
     return data
 

@@ -286,3 +286,27 @@ async def test_replay_speed_zero_or_negative_raises_value_error():
         async for _ in stream_flux_replay(records, speed=-5.0):
             pass
 
+
+def test_load_events_non_list_returns_none():
+    from backend.data_loader import load_events
+
+    with patch("backend.data_loader._find_latest", return_value="fake_events.json"):
+        with patch("backend.data_loader._load_json", return_value={"events": []}):
+            assert load_events() is None
+
+
+def test_load_predictions_non_list_returns_none():
+    from backend.data_loader import load_predictions
+
+    with patch("backend.data_loader._find_latest", return_value="fake_predictions.json"):
+        with patch("backend.data_loader._load_json", return_value={"predictions": []}):
+            assert load_predictions() is None
+
+
+def test_load_goes_catalog_non_list_returns_empty_list():
+    from backend.data_loader import load_goes_catalog
+
+    with patch("backend.data_loader._load_json", return_value={"goes_events": {}}):
+        assert load_goes_catalog() == []
+
+
