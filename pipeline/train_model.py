@@ -165,9 +165,9 @@ def create_labels(feature_df: pd.DataFrame, event_df: pd.DataFrame) -> pd.Series
             index=feature_df.index,
         )
 
-        if "solexs_flux_roc_5min_per_min" in feature_df.columns:
+        if "solexs_flux_roc_permin_5min" in feature_df.columns:
             precursor_signal |= (
-                feature_df["solexs_flux_roc_5min_per_min"] > 0
+                feature_df["solexs_flux_roc_permin_5min"] > 0
             )
 
         if "solexs_flux_zscore_90min" in feature_df.columns:
