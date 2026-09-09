@@ -148,6 +148,19 @@ def test_bad_quality_samples_do_not_trigger_events():
     assert len(solexs_events) == 0
 
 
+def test_string_quality_flag_does_not_break_detection():
+    """Regression test for review comment: quality_flag arriving as a
+    STRING ('1') instead of int/float must not silently break the
+    equality check and drop every event."""
+    df = make_flat_noise_df(mean=100.0, std=2.0)
+    df = inject_spike(df, "solexs_flux", start_idx=150, length=10, amplitude=40)
+    df["quality_flag"] = "1"  # string, not int — this is the bug scenario
+
+    events = detect_flares(df, window=90, k=3.0, min_consecutive=3, decay_k=1.5)
+    solexs_events = [e for e in events if e["instrument"] == "solexs"]
+    assert len(solexs_events) == 1  # must still detect the spike, not silently drop it
+
+
 if __name__ == "__main__":
     import sys
     sys.exit(pytest.main([__file__, "-v"]))

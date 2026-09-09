@@ -110,6 +110,17 @@ def group_events(df: pd.DataFrame, flux_col: str, instrument: str,
 
     has_quality = "quality_flag" in df.columns
 
+    # FIX (review from Mayank): quality_flag can arrive as a string
+    # ("1", "1.0") instead of an int/float, depending on how it was
+    # serialized upstream (e.g. parquet round-tripped through object dtype,
+    # or read from CSV). A plain `== 1` comparison silently fails on
+    # strings — "1" == 1 is False in Python — which would make every
+    # sample look "bad" (or every sample look "good", depending on which
+    # way the bug leans) with NO error raised. Coerce to numeric up front
+    # so the comparison is type-safe regardless of how it arrived.
+    # Anything that fails to coerce (NaN, garbage) is treated as bad data.
+    quality_numeric = pd.to_numeric(df["quality_flag"], errors="coerce") if has_quality else None
+
     events = []
     event_id_counter = 0
 
@@ -121,7 +132,10 @@ def group_events(df: pd.DataFrame, flux_col: str, instrument: str,
     active_event = None
 
     def is_good(i):
-        return (not has_quality) or (df["quality_flag"].iloc[i] == 1)
+        if not has_quality:
+            return True
+        val = quality_numeric.iloc[i]
+        return pd.notna(val) and val == 1
 
     for i in range(len(df)):
         row = df.iloc[i]
@@ -250,22 +264,64 @@ def events_to_json(events: list) -> str:
     return json.dumps(serializable, indent=2)
 
 
+def run_pipeline(input_path: str = "data/processed/aligned_flux.parquet",
+                  output_path: str = "data/processed/events.json",
+                  window: int = 90, k: float = 3.0,
+                  min_consecutive: int = 3, decay_k: float = 1.5) -> list:
+    """
+    STEP 5 (part 2): CLI entry point. Reads Prakriti's aligned parquet output,
+    runs detect_flares(), and writes the result to output_path as JSON so the
+    backend's /api/events can serve it directly.
+    """
+    import os
+
+    df = pd.read_parquet(input_path)
+    events = detect_flares(df, window=window, k=k,
+                            min_consecutive=min_consecutive, decay_k=decay_k)
+
+    os.makedirs(os.path.dirname(output_path), exist_ok=True)
+    with open(output_path, "w") as f:
+        f.write(events_to_json(events))
+
+    print(f"Wrote {len(events)} event(s) to {output_path}")
+    return events
+
+
 if __name__ == "__main__":
-    # --- quick sanity test with synthetic data (not the real unit tests yet) ---
-    rng = pd.date_range("2026-01-01", periods=300, freq="1min")
-    np.random.seed(42)
-    solexs = np.random.normal(loc=100, scale=2, size=300)
-    solexs[150:160] += 40  # ~8-9 sigma -> M-class-ish
+    import argparse
 
-    hel1os = np.random.normal(loc=50, scale=1, size=300)
-    hel1os[200:205] += 15  # smaller, shorter spike on the other instrument
+    parser = argparse.ArgumentParser(description="Run the statistical flare detection pipeline.")
+    parser.add_argument("--input", default="data/processed/aligned_flux.parquet",
+                         help="Path to Prakriti's aligned parquet file")
+    parser.add_argument("--output", default="data/processed/events.json",
+                         help="Path to write detected events JSON")
+    parser.add_argument("--window", type=int, default=90, help="Rolling window in minutes")
+    parser.add_argument("--k", type=float, default=3.0, help="Trigger threshold (k * sigma)")
+    parser.add_argument("--min-consecutive", type=int, default=3,
+                         help="Min consecutive samples above threshold to confirm an event")
+    parser.add_argument("--decay-k", type=float, default=1.5, help="Decay threshold (decay_k * sigma)")
+    parser.add_argument("--demo", action="store_true",
+                         help="Run on synthetic demo data instead of reading a real file "
+                              "(useful before Prakriti's parquet file exists)")
+    args = parser.parse_args()
 
-    df = pd.DataFrame({"timestamp": rng, "solexs_flux": solexs, "hel1os_flux": hel1os})
+    if args.demo:
+        rng = pd.date_range("2026-01-01", periods=300, freq="1min")
+        np.random.seed(42)
+        solexs = np.random.normal(loc=100, scale=2, size=300)
+        solexs[150:160] += 40
+        hel1os = np.random.normal(loc=50, scale=1, size=300)
+        hel1os[200:205] += 15
+        df = pd.DataFrame({"timestamp": rng, "solexs_flux": solexs, "hel1os_flux": hel1os})
 
-    events = detect_flares(df)
-    print(f"Found {len(events)} event(s) total:\n")
-    for e in events:
-        print(e)
-
-    print("\n--- JSON output ---")
-    print(events_to_json(events))
+        events = detect_flares(df, window=args.window, k=args.k,
+                                min_consecutive=args.min_consecutive, decay_k=args.decay_k)
+        print(f"Found {len(events)} event(s) total:\n")
+        for e in events:
+            print(e)
+        print("\n--- JSON output ---")
+        print(events_to_json(events))
+    else:
+        run_pipeline(input_path=args.input, output_path=args.output,
+                     window=args.window, k=args.k,
+                     min_consecutive=args.min_consecutive, decay_k=args.decay_k)
