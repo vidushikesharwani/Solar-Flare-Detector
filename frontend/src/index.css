@@ -1,0 +1,77 @@
+:root {
+  --bg-main: #07111f;
+  --bg-deep: #040a13;
+  --bg-card: rgba(13, 28, 48, 0.72);
+
+  --blue: #4da3ff;
+  --blue-soft: #75baff;
+  --blue-glow: rgba(77, 163, 255, 0.22);
+
+  --violet: #9b8cff;
+  --violet-soft: #b8adff;
+  --violet-glow: rgba(155, 140, 255, 0.16);
+
+  --text-main: #f2f6fb;
+  --text-secondary: #aab9cc;
+  --text-muted: #71839a;
+
+  --border: rgba(130, 170, 210, 0.14);
+
+  font-family:
+    Inter,
+    system-ui,
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    sans-serif;
+
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  margin: 0;
+  min-width: 320px;
+  min-height: 100vh;
+
+  background:
+    radial-gradient(
+      circle at 50% 15%,
+      rgba(39, 94, 150, 0.12),
+      transparent 34%
+    ),
+    var(--bg-deep);
+
+  color: var(--text-main);
+}
+
+button,
+input,
+textarea,
+select {
+  font: inherit;
+}
+
+button {
+  cursor: pointer;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+#root {
+  width: 100%;
+  min-height: 100vh;
+}
