@@ -44,14 +44,228 @@ def compute_baseline_sigma(df: pd.DataFrame, flux_col: str, window_minutes: int 
     return df
 
 
+def flag_triggers(df: pd.DataFrame, flux_col: str, k: float = 3.0) -> pd.DataFrame:
+    """
+    STEP 2: Flag each sample as a candidate flare trigger when
+        F >= B + k*sigma
+
+    Requires df to already have f"{flux_col}_baseline" and f"{flux_col}_sigma"
+    columns (i.e. run compute_baseline_sigma() first).
+
+    Adds one new column: f"{flux_col}_trigger" (bool) and
+    f"{flux_col}_n_sigma" (how many sigma above baseline the sample is,
+    useful later for classification).
+    """
+    baseline_col = f"{flux_col}_baseline"
+    sigma_col = f"{flux_col}_sigma"
+    for col in (baseline_col, sigma_col):
+        if col not in df.columns:
+            raise ValueError(f"df must have '{col}' — run compute_baseline_sigma() first")
+
+    df = df.copy()
+
+    # guard against sigma == 0 (e.g. first sample, or a perfectly flat window)
+    # to avoid divide-by-zero / infinite n_sigma
+    safe_sigma = df[sigma_col].replace(0, np.nan)
+
+    df[f"{flux_col}_n_sigma"] = (df[flux_col] - df[baseline_col]) / safe_sigma
+    df[f"{flux_col}_trigger"] = df[flux_col] >= (df[baseline_col] + k * df[sigma_col])
+
+    # where sigma is 0/NaN we can't meaningfully trigger — treat as no trigger
+    df[f"{flux_col}_trigger"] = df[f"{flux_col}_trigger"].fillna(False)
+
+    return df
+
+
+def group_events(df: pd.DataFrame, flux_col: str, instrument: str,
+                  min_consecutive: int = 3, decay_k: float = 1.5) -> list:
+    """
+    STEP 3: Turn per-sample trigger flags into actual flare EVENTS.
+
+    Two rules from the spec:
+    - Noise rejection: only confirm an event once flux has been above the
+      k-sigma trigger threshold for `min_consecutive` consecutive samples.
+    - Decay tracking: once confirmed, the event stays "active" (keeps
+      extending its end_time / tracking peak) until flux decays back
+      below B + decay_k*sigma. decay_k (1.5) is looser than trigger k (3.0)
+      on purpose — that's what lets an event's "tail" extend past the
+      point it stopped being a fresh k-sigma trigger.
+
+    Also respects quality_flag: any sample with quality_flag != 1 (bad/gap)
+    can't start or extend an event. A bad sample inside an already-active
+    event is just skipped (doesn't kill the event, doesn't count toward
+    decay either) — avoids false event-splitting from one dropped sample.
+
+    Returns a list of event dicts:
+        {event_id, start_time, peak_time, end_time, peak_sigma,
+         flare_class (None here — filled in Step 4), instrument}
+    """
+    trigger_col = f"{flux_col}_trigger"
+    n_sigma_col = f"{flux_col}_n_sigma"
+    baseline_col = f"{flux_col}_baseline"
+    sigma_col = f"{flux_col}_sigma"
+    for col in (trigger_col, n_sigma_col, baseline_col, sigma_col):
+        if col not in df.columns:
+            raise ValueError(f"df must have '{col}' — run compute_baseline_sigma() and flag_triggers() first")
+
+    has_quality = "quality_flag" in df.columns
+
+    events = []
+    event_id_counter = 0
+
+    # a candidate run of consecutive triggers, not yet confirmed as an event
+    candidate_start_idx = None
+    candidate_len = 0
+
+    # the currently CONFIRMED, active event (or None)
+    active_event = None
+
+    def is_good(i):
+        return (not has_quality) or (df["quality_flag"].iloc[i] == 1)
+
+    for i in range(len(df)):
+        row = df.iloc[i]
+        good = is_good(i)
+        triggered = bool(row[trigger_col]) and good
+
+        if active_event is None:
+            if triggered:
+                if candidate_start_idx is None:
+                    candidate_start_idx = i
+                    candidate_len = 1
+                else:
+                    candidate_len += 1
+
+                if candidate_len >= min_consecutive:
+                    # CONFIRMED: promote the candidate run into an active event
+                    event_id_counter += 1
+                    start_idx = candidate_start_idx
+                    window = df[n_sigma_col].iloc[start_idx:i + 1]
+                    peak_offset = int(window.values.argmax())
+                    active_event = {
+                        "event_id": f"{instrument}_{event_id_counter:04d}",
+                        "start_time": df["timestamp"].iloc[start_idx],
+                        "peak_time": df["timestamp"].iloc[start_idx + peak_offset],
+                        "end_time": df["timestamp"].iloc[i],
+                        "peak_sigma": float(window.max()),
+                        "instrument": instrument,
+                    }
+                    candidate_start_idx = None
+                    candidate_len = 0
+            else:
+                # broken run of triggers — this IS the noise rejection
+                candidate_start_idx = None
+                candidate_len = 0
+        else:
+            if not good:
+                continue  # bad sample: skip, don't extend or kill the event
+
+            still_above_decay = row[flux_col] >= (row[baseline_col] + decay_k * row[sigma_col])
+
+            if still_above_decay:
+                active_event["end_time"] = row["timestamp"]
+                if row[n_sigma_col] > active_event["peak_sigma"]:
+                    active_event["peak_sigma"] = float(row[n_sigma_col])
+                    active_event["peak_time"] = row["timestamp"]
+            else:
+                events.append(active_event)
+                active_event = None
+                candidate_start_idx = None
+                candidate_len = 0
+
+    if active_event is not None:
+        # data ended while still active — close it out anyway
+        events.append(active_event)
+
+    return events
+
+
+def classify_flare(peak_sigma: float) -> str:
+    """
+    STEP 4: Classify a flare event by its peak sigma above baseline.
+
+        X-Class: peak >= 10.0
+        M-Class: peak >= 7.0
+        C-Class: peak >= 4.0
+        B-Class: peak >= 2.0
+        A-Class: peak < 2.0
+    """
+    if peak_sigma >= 10.0:
+        return "X"
+    elif peak_sigma >= 7.0:
+        return "M"
+    elif peak_sigma >= 4.0:
+        return "C"
+    elif peak_sigma >= 2.0:
+        return "B"
+    else:
+        return "A"
+
+
+def detect_flares(df: pd.DataFrame, window: int = 90, k: float = 3.0,
+                   min_consecutive: int = 3, decay_k: float = 1.5) -> list:
+    """
+    MAIN ENTRY POINT. Runs the full pipeline (steps 1-4) for BOTH instruments
+    independently (solexs_flux and hel1os_flux), since the ML teammate fuses
+    them later and each needs its own detections.
+
+    Returns a combined list of event dicts matching the shared schema:
+        {event_id, start_time, peak_time, end_time, peak_sigma,
+         flare_class, instrument}
+    """
+    all_events = []
+
+    for flux_col, instrument in [("solexs_flux", "solexs"), ("hel1os_flux", "hel1os")]:
+        if flux_col not in df.columns:
+            continue  # that instrument's data isn't present in this df, skip it
+
+        out = compute_baseline_sigma(df, flux_col, window_minutes=window)
+        out = flag_triggers(out, flux_col, k=k)
+        events = group_events(out, flux_col, instrument=instrument,
+                               min_consecutive=min_consecutive, decay_k=decay_k)
+
+        for e in events:
+            e["flare_class"] = classify_flare(e["peak_sigma"])
+
+        all_events.extend(events)
+
+    return all_events
+
+
+def events_to_json(events: list) -> str:
+    """
+    STEP 5 (part 1): Serialize the event list to JSON, matching the schema
+    the backend (Mayank) and ML pipeline (Vidushi) expect.
+    Timestamps are converted to ISO 8601 strings.
+    """
+    import json
+
+    serializable = []
+    for e in events:
+        e2 = dict(e)
+        for time_key in ("start_time", "peak_time", "end_time"):
+            e2[time_key] = pd.Timestamp(e2[time_key]).isoformat()
+        serializable.append(e2)
+
+    return json.dumps(serializable, indent=2)
+
+
 if __name__ == "__main__":
     # --- quick sanity test with synthetic data (not the real unit tests yet) ---
     rng = pd.date_range("2026-01-01", periods=300, freq="1min")
     np.random.seed(42)
-    flux = np.random.normal(loc=100, scale=2, size=300)  # flat baseline + noise
-    flux[150:155] += 40  # injected spike
+    solexs = np.random.normal(loc=100, scale=2, size=300)
+    solexs[150:160] += 40  # ~8-9 sigma -> M-class-ish
 
-    df = pd.DataFrame({"timestamp": rng, "solexs_flux": flux})
-    out = compute_baseline_sigma(df, "solexs_flux", window_minutes=90)
+    hel1os = np.random.normal(loc=50, scale=1, size=300)
+    hel1os[200:205] += 15  # smaller, shorter spike on the other instrument
 
-    print(out[["timestamp", "solexs_flux", "solexs_flux_baseline", "solexs_flux_sigma"]].iloc[145:158])
+    df = pd.DataFrame({"timestamp": rng, "solexs_flux": solexs, "hel1os_flux": hel1os})
+
+    events = detect_flares(df)
+    print(f"Found {len(events)} event(s) total:\n")
+    for e in events:
+        print(e)
+
+    print("\n--- JSON output ---")
+    print(events_to_json(events))
