@@ -593,7 +593,51 @@ def main():
         X_train,
         y_train,
         sample_weight=sample_weights,
+        eval_set=[
+            (X_train, y_train),
+        ],
         verbose=False,
+    )
+        # --------------------------------------------------------
+    # Save training curve history
+    # --------------------------------------------------------
+
+    training_history = (
+        validation_model.evals_result()
+    )
+
+    history_dir = Path(
+        "data/processed"
+    )
+
+    history_file = (
+        history_dir / "training_history.json"
+    )
+
+    history_dir.mkdir(
+        parents=True,
+        exist_ok=True,
+    )
+
+    import json
+
+    with open(
+        history_file,
+        "w",
+        encoding="utf-8",
+    ) as file:
+        json.dump(
+            training_history,
+            file,
+            indent=2,
+        )
+
+    print(
+        f"\nTraining history saved to:"
+    )
+
+    print(
+        f"  {history_file}"
     )
 
     # --------------------------------------------------------

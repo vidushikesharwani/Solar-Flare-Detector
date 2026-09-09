@@ -483,6 +483,41 @@ def main():
         f"{len(results)}"
     )
 
+        # --------------------------------------------------------
+    # Save predictions for backend/frontend consumption
+    # --------------------------------------------------------
+
+    output_dir = Path(
+        "data/processed"
+    )
+
+    output_file = (
+        output_dir / "predictions.json"
+    )
+
+    output_dir.mkdir(
+        parents=True,
+        exist_ok=True,
+    )
+
+    import json
+
+    with open(
+        output_file,
+        "w",
+        encoding="utf-8",
+    ) as file:
+        json.dump(
+            results,
+            file,
+            indent=2,
+        )
+
+    print(
+        f"Predictions saved to: "
+        f"{output_file}"
+    )
+
     # --------------------------------------------------------
     # Show first 5 predictions
     # --------------------------------------------------------

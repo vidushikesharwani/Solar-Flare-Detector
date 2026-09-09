@@ -1,27 +1,27 @@
-﻿# Solar Flare Detector — Python Dependencies
+# Solar Flare Detector - Python Dependencies
 # Generated for Python 3.11+
 
-# ── Backend ───────────────────────────────────────────────────────────────────
+# Backend
 fastapi==0.141.1
-uvicorn[standard]== 0.52.4
+uvicorn[standard]==0.52.4
 pydantic==2.13.5
-httpx==0.28.1          # for API tests
+httpx==0.28.1
 python-multipart==0.0.32
 
-# ── Data / Pipeline ───────────────────────────────────────────────────────────
+# Data / Pipeline
 pandas==3.0.5
 numpy==2.5.3
-pyarrow==25.0.1        # parquet read/write
-astropy==8.0.1         # FITS handling
+pyarrow==25.0.1
+astropy==8.0.1
 scipy==1.18.1
 
-# ── ML ────────────────────────────────────────────────────────────────────────
-xgboost== 3.4.1
+# ML
+xgboost==3.4.1
 scikit-learn==1.9.0
 joblib==1.6.0
 shap==0.52.0
 
-# ── Dev / Testing ─────────────────────────────────────────────────────────────
+# Dev / Testing
 pytest==9.1.1
 pytest-asyncio==1.4.0
 anyio==4.15.1
