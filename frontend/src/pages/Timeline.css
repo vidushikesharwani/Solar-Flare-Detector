@@ -1,0 +1,83 @@
+.timeline-page {
+  min-height: 100vh;
+  padding: 40px;
+  background: #0b1020;
+  color: white;
+}
+
+.timeline-page h1 {
+  margin-bottom: 8px;
+  font-size: 36px;
+}
+
+.timeline-description {
+  color: #aab3c5;
+  margin-bottom: 30px;
+}
+
+.timeline-list {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  max-width: 900px;
+}
+
+.event-card {
+  background: #151c30;
+  border: 1px solid #2d3855;
+  border-radius: 14px;
+  padding: 24px;
+  transition: transform 0.2s ease;
+}
+
+.event-card:hover {
+  transform: translateY(-3px);
+}
+
+.event-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+.event-header h2 {
+  margin: 0;
+  font-size: 28px;
+}
+
+.event-header span {
+  background: #26314d;
+  padding: 6px 12px;
+  border-radius: 20px;
+  font-size: 14px;
+}
+
+.event-times {
+  display: flex;
+  gap: 50px;
+  margin-bottom: 20px;
+}
+
+.event-times strong {
+  color: #aab3c5;
+  font-size: 14px;
+}
+
+.event-times p {
+  margin-top: 6px;
+  font-size: 17px;
+}
+
+.event-card button {
+  padding: 10px 16px;
+  border: none;
+  border-radius: 8px;
+  background: #4f7cff;
+  color: white;
+  cursor: pointer;
+}
+
+.event-card button:hover {
+  opacity: 0.85;
+}
