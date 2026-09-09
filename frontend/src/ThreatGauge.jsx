@@ -4,9 +4,7 @@ function ThreatGauge({ probability = 0 }) {
     Math.max(0, Number(probability) || 0)
   );
 
-  const percentage = Math.round(
-    safeProbability * 100
-  );
+  const percentage = Math.round(safeProbability * 100);
 
   let level = "LOW";
 

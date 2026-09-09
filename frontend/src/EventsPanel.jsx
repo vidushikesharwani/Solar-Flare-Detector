@@ -1,106 +1,209 @@
-function EventsPanel({ events = [] }) {
-  const fallbackEvents = [
+function formatTime(timestamp) {
+  if (!timestamp) return "—";
+
+  const date = new Date(timestamp);
+
+  if (Number.isNaN(date.getTime())) {
+    return String(timestamp);
+  }
+
+  return date.toLocaleTimeString([], {
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
+function formatDate(timestamp) {
+  if (!timestamp) return "—";
+
+  const date = new Date(timestamp);
+
+  if (Number.isNaN(date.getTime())) {
+    return String(timestamp);
+  }
+
+  return date.toLocaleDateString([], {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+  });
+}
+
+function getFlareClass(event) {
+  return (
+    event?.flare_class ||
+    event?.predicted_class ||
+    "—"
+  ).toString().toUpperCase();
+}
+
+function getClassStyle(flareClass) {
+  switch (flareClass) {
+    case "X":
+      return "event-class-x";
+
+    case "M":
+      return "event-class-m";
+
+    case "C":
+      return "event-class-c";
+
+    case "B":
+      return "event-class-b";
+
+    default:
+      return "event-class-a";
+  }
+}
+
+function PreviewEvents() {
+  const previewEvents = [
     {
-      event_id: "FLR-001",
-      peak_time: "14:32",
-      flare_class: "M",
-      instrument: "SoLEXS",
+      id: "FLR-001",
+      time: "14:32",
+      flareClass: "M",
     },
     {
-      event_id: "FLR-002",
-      peak_time: "16:07",
-      flare_class: "C",
-      instrument: "HEL1OS",
+      id: "FLR-002",
+      time: "16:07",
+      flareClass: "C",
     },
     {
-      event_id: "FLR-003",
-      peak_time: "18:41",
-      flare_class: "X",
-      instrument: "SoLEXS",
+      id: "FLR-003",
+      time: "18:41",
+      flareClass: "X",
     },
   ];
 
-  const displayEvents =
-    events.length > 0
-      ? events
-      : fallbackEvents;
+  return (
+    <div className="events-preview">
+      {previewEvents.map((event) => (
+        <div className="event-row" key={event.id}>
+          <div className="event-marker" />
 
-  function formatTime(value) {
-    if (!value) return "--";
+          <div className="event-main">
+            <div className="event-id">
+              {event.id}
+            </div>
 
-    const date = new Date(value);
+            <div className="event-meta">
+              <span>{event.time}</span>
 
-    if (Number.isNaN(date.getTime())) {
-      return value;
-    }
+              <span
+                className={`event-class-badge ${getClassStyle(
+                  event.flareClass
+                )}`}
+              >
+                {event.flareClass}
+              </span>
 
-    return date.toLocaleTimeString([], {
-      hour: "2-digit",
-      minute: "2-digit",
-    });
-  }
+              <span className="event-detected">
+                Detected
+              </span>
+            </div>
+          </div>
+
+          <div className="event-state">
+            DETECTED
+          </div>
+        </div>
+      ))}
+
+      <div className="events-preview-note">
+        Displaying interface preview data until processed
+        observations are available.
+      </div>
+    </div>
+  );
+}
+
+export default function EventsPanel({ events = [] }) {
+  const hasEvents =
+    Array.isArray(events) && events.length > 0;
 
   return (
-    <section
-      className="events-section"
-      id="events"
-    >
-      <div className="section-heading">
+    <div className="events-panel">
+
+      <div className="events-intro">
         <div>
-          <p className="eyebrow">EVENT TIMELINE</p>
+          <span className="events-kicker">
+            EVENT TIMELINE
+          </span>
 
-          <h2>Recent Solar Events</h2>
+          <h3>Recent Solar Events</h3>
 
-          <p className="events-description">
+          <p>
             Detected solar flare activity from
             Aditya-L1 observations.
           </p>
         </div>
       </div>
 
-      <div className="events-list">
-        {displayEvents.map((event) => (
-          <div
-            className="event-row"
-            key={event.event_id}
-          >
-            <div>
-              <span className="event-id">
-                {event.event_id}
-              </span>
+      {hasEvents ? (
+        <div className="events-list">
+          {events.map((event, index) => {
+            const flareClass =
+              getFlareClass(event);
 
-              <span className="event-instrument">
-                {event.instrument || "Aditya-L1"}
-              </span>
-            </div>
+            return (
+              <div
+                className="event-row"
+                key={
+                  event?.event_id ||
+                  `${event?.start_time}-${index}`
+                }
+              >
+                <div className="event-marker" />
 
-            <span className="event-time">
-              {formatTime(event.peak_time)}
-            </span>
+                <div className="event-main">
+                  <div className="event-id">
+                    {event?.event_id ||
+                      `FLR-${String(index + 1).padStart(
+                        3,
+                        "0"
+                      )}`}
+                  </div>
 
-            <span
-              className={`event-class class-${
-                event.flare_class
-              }`}
-            >
-              {event.flare_class || "A"}
-            </span>
+                  <div className="event-meta">
+                    <span>
+                      {formatTime(event?.start_time)}
+                    </span>
 
-            <span className="event-status">
-              Detected
-            </span>
-          </div>
-        ))}
-      </div>
+                    <span
+                      className={`event-class-badge ${getClassStyle(
+                        flareClass
+                      )}`}
+                    >
+                      {flareClass}
+                    </span>
 
-      {events.length === 0 && (
-        <p className="demo-note">
-          Displaying interface preview data until
-          processed observations are available.
-        </p>
+                    <span className="event-detected">
+                      Detected
+                    </span>
+                  </div>
+                </div>
+
+                <div className="event-details">
+                  <span>
+                    {formatDate(event?.start_time)}
+                  </span>
+
+                  <span>
+                    {event?.instrument || "Aditya-L1"}
+                  </span>
+                </div>
+
+                <div className="event-state">
+                  DETECTED
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      ) : (
+        <PreviewEvents />
       )}
-    </section>
+
+    </div>
   );
 }
-
-export default EventsPanel;

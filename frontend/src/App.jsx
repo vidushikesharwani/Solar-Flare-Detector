@@ -1,10 +1,17 @@
-import "./App.css";
 import { useEffect, useState } from "react";
-import { getFlux, getEvents, getPredictions } from "./api";
+
 import FluxChart from "./FluxChart";
 import SolarActivity from "./SolarActivity";
 import ThreatGauge from "./ThreatGauge";
 import EventsPanel from "./EventsPanel";
+
+import {
+  getFlux,
+  getEvents,
+  getPredictions,
+} from "./api";
+
+import "./App.css";
 
 function App() {
   const [fluxData, setFluxData] = useState([]);
@@ -14,7 +21,19 @@ function App() {
   const [loading, setLoading] = useState(true);
   const [backendConnected, setBackendConnected] = useState(false);
 
+  /*
+   * =====================================================
+   * LOAD / REFRESH DASHBOARD DATA
+   * =====================================================
+   *
+   * Predictions are refreshed every 3 seconds so that
+   * the Sun animation and threat gauge can react to
+   * updated model predictions automatically.
+   */
+
   useEffect(() => {
+    let mounted = true;
+
     async function loadDashboard() {
       const results = await Promise.allSettled([
         getFlux(),
@@ -22,262 +41,503 @@ function App() {
         getPredictions(),
       ]);
 
+      if (!mounted) return;
+
+      const [
+        fluxResult,
+        eventsResult,
+        predictionsResult,
+      ] = results;
+
       let connected = false;
 
-      if (results[0].status === "fulfilled") {
-        setFluxData(results[0].value.data || []);
+      /* -------------------------
+         FLUX
+      ------------------------- */
+
+      if (fluxResult.status === "fulfilled") {
         connected = true;
+
+        setFluxData(
+          Array.isArray(fluxResult.value?.data)
+            ? fluxResult.value.data
+            : []
+        );
       }
 
-      if (results[1].status === "fulfilled") {
-        setEvents(results[1].value.events || []);
+      /* -------------------------
+         EVENTS
+      ------------------------- */
+
+      if (eventsResult.status === "fulfilled") {
         connected = true;
+
+        setEvents(
+          Array.isArray(eventsResult.value?.events)
+            ? eventsResult.value.events
+            : []
+        );
       }
 
-      if (results[2].status === "fulfilled") {
-        setPredictions(results[2].value.predictions || []);
+      /* -------------------------
+         PREDICTIONS
+      ------------------------- */
+
+      if (predictionsResult.status === "fulfilled") {
         connected = true;
+
+        setPredictions(
+          Array.isArray(
+            predictionsResult.value?.predictions
+          )
+            ? predictionsResult.value.predictions
+            : []
+        );
       }
 
       setBackendConnected(connected);
       setLoading(false);
     }
 
+    /* Initial load */
     loadDashboard();
+
+    /*
+     * Refresh automatically every 3 seconds.
+     */
+    const interval = setInterval(
+      loadDashboard,
+      3000
+    );
+
+    return () => {
+      mounted = false;
+      clearInterval(interval);
+    };
   }, []);
+
+
+  /*
+   * =====================================================
+   * LATEST MODEL PREDICTION
+   * =====================================================
+   */
 
   const latestPrediction =
     predictions.length > 0
       ? predictions[predictions.length - 1]
       : null;
 
-  const latestEvent =
-    events.length > 0
-      ? events[events.length - 1]
-      : null;
 
-  const flareClass =
-    latestPrediction?.predicted_class ||
-    latestEvent?.flare_class ||
-    "A";
+  /*
+   * =====================================================
+   * AUTOMATIC FLARE CLASS
+   * =====================================================
+   *
+   * Backend predicted_class controls the Sun.
+   *
+   * A → quiet
+   * B → low
+   * C → moderate
+   * M → high
+   * X → extreme
+   */
 
-  const threatProbability =
-    latestPrediction?.flare_probability ?? 0.12;
+  const latestFlareClass =
+    latestPrediction?.predicted_class
+      ?.toString()
+      .trim()
+      .toUpperCase() || "A";
 
-  const statusText =
-    flareClass === "X"
-      ? "Extreme solar activity detected"
-      : flareClass === "M"
-      ? "High solar activity detected"
-      : flareClass === "C"
-      ? "Active solar conditions"
-      : "No significant flare activity";
+
+  /*
+   * =====================================================
+   * AUTOMATIC THREAT PROBABILITY
+   * =====================================================
+   */
+
+  const latestProbability =
+    typeof latestPrediction?.flare_probability ===
+    "number"
+      ? latestPrediction.flare_probability
+      : 0.12;
+
+
+  /*
+   * =====================================================
+   * THREAT LEVEL
+   * =====================================================
+   */
+
+  const threatLevel =
+    latestProbability >= 0.7
+      ? "HIGH"
+      : latestProbability >= 0.4
+        ? "MODERATE"
+        : "LOW";
+
 
   return (
     <div className="app">
-      <div className="stars stars-one"></div>
-      <div className="stars stars-two"></div>
-      <div className="nebula"></div>
+
+      {/* =================================================
+          BACKGROUND
+      ================================================= */}
+
+      <div className="space-background">
+        <div className="stars stars-one" />
+        <div className="stars stars-two" />
+
+        <div className="nebula nebula-one" />
+        <div className="nebula nebula-two" />
+      </div>
+
+
+      {/* =================================================
+          NAVBAR
+      ================================================= */}
 
       <nav className="navbar">
-        <div className="brand">
-          <span className="brand-dot"></span>
-          SOLAR FLARE DETECTOR
+
+        <div className="nav-brand">
+
+          <div className="brand-orbit">
+            <span />
+          </div>
+
+          <div>
+            <div className="brand-title">
+              SOLAR FLARE
+            </div>
+
+            <div className="brand-subtitle">
+              DETECTION SYSTEM
+            </div>
+          </div>
+
         </div>
 
-        <div className="nav-links">
-          <a href="#dashboard">Dashboard</a>
-          <a href="#events">Events</a>
-          <a href="#about">About</a>
+
+        <div className="nav-status">
+
+          <span className="status-dot" />
+
+          {backendConnected
+            ? "DATA CONNECTED"
+            : "SYSTEM READY"}
+
         </div>
 
-        <div className="live-status">
-          <span className="status-dot"></span>
-          {backendConnected ? "DATA CONNECTED" : "SYSTEM READY"}
-        </div>
       </nav>
 
-      <main id="dashboard">
 
-        {/* HERO */}
+      {/* =================================================
+          MAIN DASHBOARD
+      ================================================= */}
+
+      <main className="dashboard">
+
+
+        {/* =================================================
+            HERO
+        ================================================= */}
+
         <section className="hero-section">
+
           <div className="hero-content">
-            <p className="eyebrow">
-              ADITYA-L1 • SOLAR OBSERVATION
-            </p>
+
+            <div className="eyebrow">
+              ADITYA-L1 • X-RAY MONITORING
+            </div>
 
             <h1>
-              Understanding
-              <span> Our Sun</span>
+              Solar Activity
+              <span>Intelligence</span>
             </h1>
 
-            <p className="hero-description">
-              Monitor solar activity and detect solar flares through
-              observations from India's Aditya-L1 mission.
+            <p>
+              Real-time analysis of solar X-ray
+              observations using SoLEXS and HEL1OS data.
             </p>
 
-            <button
-              className="explore-button"
-              onClick={() =>
-                document
-                  .getElementById("dashboard-monitoring")
-                  ?.scrollIntoView({ behavior: "smooth" })
-              }
-            >
-              Explore Dashboard
-              <span>→</span>
-            </button>
+            <div className="hero-status">
+
+              <span className="live-indicator" />
+
+              {backendConnected
+                ? "LIVE DATA STREAM"
+                : "MONITORING SYSTEM READY"}
+
+            </div>
+
           </div>
 
-          <SolarActivity flareClass={flareClass} />
+
+          <div className="hero-decoration">
+
+            <div className="hero-ring hero-ring-one" />
+            <div className="hero-ring hero-ring-two" />
+            <div className="hero-ring hero-ring-three" />
+
+          </div>
+
         </section>
 
-        {/* MONITORING */}
-        <section
-          className="activity-section"
-          id="dashboard-monitoring"
-        >
-          <div className="section-heading">
-            <div>
-              <p className="eyebrow">LIVE MONITORING</p>
-              <h2>Current Solar Activity</h2>
+
+        {/* =================================================
+            SOLAR + THREAT
+        ================================================= */}
+
+        <section className="monitoring-grid">
+
+
+          {/* SOLAR MONITOR */}
+
+          <div className="dashboard-card solar-card">
+
+            <div className="card-header">
+
+              <div>
+
+                <span className="card-kicker">
+                  SOLAR ACTIVITY
+                </span>
+
+                <h2>
+                  Sun Monitor
+                </h2>
+
+              </div>
+
+
+              <span className="card-badge">
+                {latestFlareClass} CLASS
+              </span>
+
             </div>
 
-            <div className="activity-state">
-              <span></span>
-              {loading ? "Loading" : "Monitoring"}
-            </div>
+
+            <SolarActivity
+              flareClass={latestFlareClass}
+            />
+
           </div>
 
-          <div className="dashboard-grid">
 
-            {/* FLUX */}
-            <div className="flux-card glass-card">
-              <div className="card-header">
-                <div>
-                  <p className="card-label">SOLAR FLUX</p>
-                  <h3>SoLEXS + HEL1OS</h3>
-                </div>
+          {/* THREAT GAUGE */}
 
-                <span className="time-label">
-                  {loading
-                    ? "LOADING"
-                    : backendConnected
-                    ? "LIVE DATA"
-                    : "WAITING"}
-                </span>
-              </div>
+          <div className="dashboard-card threat-card">
 
-              <div className="chart-container">
-                <FluxChart
-                  data={fluxData}
-                  loading={loading}
-                />
-              </div>
+            <div className="card-header">
 
-              <div className="chart-legend">
-                <span>
-                  <i className="legend-blue"></i>
-                  SoLEXS
+              <div>
+
+                <span className="card-kicker">
+                  MACHINE LEARNING
                 </span>
 
-                <span>
-                  <i className="legend-violet"></i>
-                  HEL1OS
-                </span>
-              </div>
-            </div>
+                <h2>
+                  Threat Probability
+                </h2>
 
-            {/* FLARE STATUS */}
-            <div className="metric-card glass-card">
-              <p className="card-label">FLARE STATUS</p>
-
-              <div className={`flare-class flare-${flareClass}`}>
-                {flareClass}
               </div>
 
-              <p className="metric-description">
-                {statusText}
-              </p>
 
-              {latestEvent && (
-                <div className="small-data">
-                  Latest detected event
-                </div>
-              )}
+              <span className="card-badge">
+                XGBOOST
+              </span>
+
             </div>
 
-            {/* THREAT */}
-            <div className="metric-card glass-card">
-              <p className="card-label">
-                ML THREAT PROBABILITY
-              </p>
 
-              <ThreatGauge
-                probability={threatProbability}
-              />
+            <ThreatGauge
+              probability={latestProbability}
+            />
+
+
+            <div className="threat-summary">
+
+              <div className="threat-summary-label">
+                CURRENT THREAT
+              </div>
+
+              <div className="threat-summary-value">
+                {threatLevel}
+              </div>
+
+              <div className="threat-summary-detail">
+                Predicted class:{" "}
+                <strong>
+                  {latestFlareClass}
+                </strong>
+              </div>
+
             </div>
+
           </div>
+
         </section>
 
-        {/* EVENTS */}
-        <EventsPanel events={events} />
 
-        {/* ABOUT */}
-        <section className="about-section" id="about">
-          <div className="section-heading">
+        {/* =================================================
+            FLUX CHART
+        ================================================= */}
+
+        <section className="dashboard-card flux-section">
+
+          <div className="card-header">
+
             <div>
-              <p className="eyebrow">THE MISSION</p>
-              <h2>Observing Solar Activity</h2>
-              <p className="section-description">
-                Combining complementary X-ray observations with
-                data-driven flare detection.
+
+              <span className="card-kicker">
+                X-RAY OBSERVATIONS
+              </span>
+
+              <h2>
+                Solar X-Ray Flux
+              </h2>
+
+              <p className="card-description">
+                Aligned SoLEXS and HEL1OS observations
               </p>
+
             </div>
+
+
+            <div className="flux-live-status">
+
+              <span className="status-dot" />
+
+              {backendConnected
+                ? "LIVE DATA"
+                : "WAITING FOR DATA"}
+
+            </div>
+
           </div>
 
-          <div className="about-grid">
-            <div className="about-card">
-              <span className="about-number">01</span>
 
-              <h3>SoLEXS</h3>
+          <FluxChart
+            data={fluxData}
+            loading={loading}
+          />
 
-              <p>
-                Soft X-ray observations used to study changes
-                in solar activity and flare behaviour.
+        </section>
+
+
+        {/* =================================================
+            EVENTS
+        ================================================= */}
+
+        <section className="dashboard-card events-section">
+
+          <div className="card-header">
+
+            <div>
+
+              <span className="card-kicker">
+                DETECTION ENGINE
+              </span>
+
+              <h2>
+                Detected Events
+              </h2>
+
+              <p className="card-description">
+                Solar flare events identified by the
+                detection pipeline
               </p>
+
             </div>
 
-            <div className="about-card">
-              <span className="about-number">02</span>
 
-              <h3>HEL1OS</h3>
-
-              <p>
-                Hard X-ray observations provide complementary
-                information about energetic solar activity.
-              </p>
+            <div className="event-count">
+              {events.length}
             </div>
 
-            <div className="about-card">
-              <span className="about-number">03</span>
-
-              <h3>Machine Learning</h3>
-
-              <p>
-                XGBoost-based prediction estimates the probability
-                of solar flare activity from extracted features.
-              </p>
-            </div>
           </div>
+
+
+          <EventsPanel
+            events={events}
+          />
+
+        </section>
+
+
+        {/* =================================================
+            ABOUT
+        ================================================= */}
+
+        <section className="about-section">
+
+          <div className="about-content">
+
+            <span className="card-kicker">
+              ABOUT THE SYSTEM
+            </span>
+
+            <h2>
+              Understanding Solar Activity
+            </h2>
+
+            <p>
+              The Solar Flare Detector analyses X-ray
+              observations from the Aditya-L1 mission to
+              identify changes in solar activity. SoLEXS
+              provides soft X-ray observations while HEL1OS
+              captures higher-energy X-ray activity.
+            </p>
+
+            <p>
+              Statistical detection and machine-learning
+              predictions work together to identify and
+              classify potential solar flare events.
+            </p>
+
+          </div>
+
+
+          <div className="about-stats">
+
+            <div className="about-stat">
+              <strong>2</strong>
+              <span>INSTRUMENTS</span>
+            </div>
+
+            <div className="about-stat">
+              <strong>5</strong>
+              <span>FLARE CLASSES</span>
+            </div>
+
+            <div className="about-stat">
+              <strong>AI</strong>
+              <span>XGBOOST MODEL</span>
+            </div>
+
+          </div>
+
         </section>
 
       </main>
 
+
+      {/* =================================================
+          FOOTER
+      ================================================= */}
+
       <footer className="footer">
-        <span>ADITYA-L1 • SOLAR FLARE DETECTOR</span>
-        <span>Offline-first scientific visualization</span>
+
+        <div>
+          SOLAR FLARE DETECTOR
+        </div>
+
+        <div>
+          ADITYA-L1 • SoLEXS • HEL1OS
+        </div>
+
       </footer>
+
     </div>
   );
 }
