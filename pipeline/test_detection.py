@@ -1,0 +1,153 @@
+"""
+Unit tests for pipeline/detection.py
+Owner: Aditi
+
+Run with: pytest pipeline/test_detection.py -v
+"""
+
+import numpy as np
+import pandas as pd
+import pytest
+
+from detection import (
+    compute_baseline_sigma,
+    flag_triggers,
+    group_events,
+    classify_flare,
+    detect_flares,
+)
+
+
+# ---------- helpers ----------
+
+def make_flat_noise_df(n=300, mean=100.0, std=2.0, seed=42, freq="1min"):
+    """Flat baseline + gaussian noise, no injected flare."""
+    rng = np.random.default_rng(seed)
+    flux = rng.normal(loc=mean, scale=std, size=n)
+    timestamps = pd.date_range("2026-01-01", periods=n, freq=freq)
+    return pd.DataFrame({"timestamp": timestamps, "solexs_flux": flux})
+
+
+def inject_spike(df, flux_col, start_idx, length, amplitude):
+    df = df.copy()
+    df.loc[start_idx:start_idx + length - 1, flux_col] += amplitude
+    return df
+
+
+# ---------- Step 1+2: baseline/sigma/trigger sanity ----------
+
+def test_baseline_tracks_flat_signal():
+    """On a flat noisy signal, baseline should sit close to the true mean."""
+    df = make_flat_noise_df(mean=100.0, std=2.0)
+    out = compute_baseline_sigma(df, "solexs_flux", window_minutes=90)
+    assert abs(out["solexs_flux_baseline"].iloc[-1] - 100.0) < 2.0
+
+
+# ---------- Step 3+4: the actual required test cases ----------
+
+def test_injected_spike_is_detected():
+    """A clear injected spike on a flat baseline must produce exactly one event."""
+    df = make_flat_noise_df(mean=100.0, std=2.0)
+    df = inject_spike(df, "solexs_flux", start_idx=150, length=10, amplitude=40)  # ~15-20 sigma
+
+    events = detect_flares(df, window=90, k=3.0, min_consecutive=3, decay_k=1.5)
+    solexs_events = [e for e in events if e["instrument"] == "solexs"]
+
+    assert len(solexs_events) == 1
+    assert solexs_events[0]["peak_sigma"] >= 3.0
+    assert solexs_events[0]["flare_class"] in ("B", "C", "M", "X")
+
+
+def test_pure_noise_triggers_no_false_positive():
+    """Pure gaussian noise with no injected flare should produce zero events
+    across many random seeds (statistically, k=3 sigma should almost never
+    sustain min_consecutive=3 samples in a row on pure noise)."""
+    false_positive_count = 0
+    n_trials = 20
+
+    for seed in range(n_trials):
+        df = make_flat_noise_df(mean=100.0, std=2.0, seed=seed)
+        events = detect_flares(df, window=90, k=3.0, min_consecutive=3, decay_k=1.5)
+        if len(events) > 0:
+            false_positive_count += 1
+
+    assert false_positive_count <= 1, (
+        f"{false_positive_count}/{n_trials} pure-noise trials produced a false event"
+    )
+
+
+def test_boundary_exactly_at_k_sigma():
+    """A sample sitting exactly at B + k*sigma must count as a trigger
+    (the spec says '>=', not '>')."""
+    df = make_flat_noise_df(mean=100.0, std=2.0)
+    out = compute_baseline_sigma(df, "solexs_flux", window_minutes=90)
+
+    idx = 200
+    baseline = out["solexs_flux_baseline"].iloc[idx]
+    sigma = out["solexs_flux_sigma"].iloc[idx]
+    out.loc[idx, "solexs_flux"] = baseline + 3.0 * sigma  # exactly 3.0 sigma
+
+    out = flag_triggers(out, "solexs_flux", k=3.0)
+    assert out["solexs_flux_trigger"].iloc[idx] == True  # noqa: E712
+
+
+def test_just_below_k_sigma_does_not_trigger():
+    """A sample just under B + k*sigma should NOT trigger."""
+    df = make_flat_noise_df(mean=100.0, std=2.0)
+    out = compute_baseline_sigma(df, "solexs_flux", window_minutes=90)
+
+    idx = 200
+    baseline = out["solexs_flux_baseline"].iloc[idx]
+    sigma = out["solexs_flux_sigma"].iloc[idx]
+    out.loc[idx, "solexs_flux"] = baseline + 2.999 * sigma
+
+    out = flag_triggers(out, "solexs_flux", k=3.0)
+    assert out["solexs_flux_trigger"].iloc[idx] == False  # noqa: E712
+
+
+def test_short_spike_rejected_as_noise():
+    """A spike shorter than min_consecutive samples must NOT become an event."""
+    df = make_flat_noise_df(mean=100.0, std=2.0)
+    df = inject_spike(df, "solexs_flux", start_idx=150, length=2, amplitude=40)
+
+    events = detect_flares(df, window=90, k=3.0, min_consecutive=3, decay_k=1.5)
+    solexs_events = [e for e in events if e["instrument"] == "solexs"]
+    assert len(solexs_events) == 0
+
+
+# ---------- Classification thresholds ----------
+
+@pytest.mark.parametrize("peak_sigma,expected_class", [
+    (15.0, "X"),
+    (10.0, "X"),
+    (9.99, "M"),
+    (7.0, "M"),
+    (6.99, "C"),
+    (4.0, "C"),
+    (3.99, "B"),
+    (2.0, "B"),
+    (1.99, "A"),
+    (0.5, "A"),
+])
+def test_classify_flare_boundaries(peak_sigma, expected_class):
+    assert classify_flare(peak_sigma) == expected_class
+
+
+# ---------- quality_flag handling ----------
+
+def test_bad_quality_samples_do_not_trigger_events():
+    """A spike that occurs entirely in quality_flag=0 (bad) samples must
+    not produce an event."""
+    df = make_flat_noise_df(mean=100.0, std=2.0)
+    df["quality_flag"] = 1
+    df = inject_spike(df, "solexs_flux", start_idx=150, length=10, amplitude=40)
+    df.loc[150:159, "quality_flag"] = 0
+
+    events = detect_flares(df, window=90, k=3.0, min_consecutive=3, decay_k=1.5)
+    solexs_events = [e for e in events if e["instrument"] == "solexs"]
+    assert len(solexs_events) == 0
+
+
+if __name__ == "__main__":
+    import sys
+    sys.exit(pytest.main([__file__, "-v"]))
