@@ -1,0 +1,81 @@
+.education-page {
+  min-height: 100vh;
+  padding: 40px;
+  background: #0b1120;
+  color: white;
+}
+
+.education-page h1 {
+  font-size: 38px;
+  margin-bottom: 10px;
+}
+
+.education-intro {
+  color: #b8c1d1;
+  font-size: 18px;
+  max-width: 800px;
+  line-height: 1.6;
+  margin-bottom: 35px;
+}
+
+.info-section {
+  background: #111827;
+  border: 1px solid #263247;
+  border-radius: 12px;
+  padding: 24px;
+  margin-bottom: 20px;
+  max-width: 900px;
+}
+
+.info-section h2 {
+  margin-top: 0;
+  margin-bottom: 12px;
+}
+
+.info-section p,
+.info-section li {
+  color: #cbd5e1;
+  line-height: 1.7;
+}
+
+.info-section ul {
+  padding-left: 25px;
+}
+
+.formula-box {
+  margin-top: 18px;
+  padding: 15px;
+  background: #0f172a;
+  border-left: 4px solid #4ade80;
+  border-radius: 6px;
+  font-family: monospace;
+  color: #4ade80;
+}
+
+.process-flow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  margin-top: 35px;
+  padding: 25px;
+  background: #111827;
+  border-radius: 12px;
+  color: #4ade80;
+  font-weight: bold;
+}
+
+@media (max-width: 700px) {
+  .education-page {
+    padding: 20px;
+  }
+
+  .education-page h1 {
+    font-size: 30px;
+  }
+
+  .process-flow {
+    flex-direction: column;
+  }
+}

@@ -106,3 +106,22 @@
   color: #000;
   border-color: #4ade80;
 }
+.empty-state {
+  text-align: center;
+  padding: 50px 20px;
+  margin-top: 30px;
+  border: 1px solid #333;
+  border-radius: 12px;
+  background: #111;
+}
+
+.empty-state h2 {
+  margin-bottom: 15px;
+}
+
+.empty-state p {
+  margin: 8px auto;
+  max-width: 600px;
+  line-height: 1.6;
+  color: #aaa;
+}

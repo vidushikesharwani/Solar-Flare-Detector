@@ -74,3 +74,46 @@
     padding: 20px;
   }
 }
+/* Per-Class Metrics Table */
+
+.metrics-table-wrapper {
+  width: 100%;
+  overflow-x: auto;
+  margin-top: 20px;
+}
+
+.metrics-table {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 500px;
+}
+
+.metrics-table th,
+.metrics-table td {
+  padding: 14px 16px;
+  text-align: center;
+  border-bottom: 1px solid #333;
+}
+
+.metrics-table th {
+  font-weight: 600;
+  background: #1a1a1a;
+}
+
+.metrics-table td:first-child,
+.metrics-table th:first-child {
+  text-align: left;
+}
+
+.metrics-table tbody tr:hover {
+  background: #1a1a1a;
+}
+
+.table-empty-state {
+  text-align: center;
+  padding: 25px;
+  margin-top: 15px;
+  border: 1px solid #333;
+  border-radius: 10px;
+  color: #aaa;
+}
