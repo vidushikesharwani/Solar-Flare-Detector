@@ -2,14 +2,15 @@
 Unit tests for pipeline/detection.py
 Owner: Aditi
 
-Run with: pytest pipeline/test_detection.py -v
+Run from repo root with: pytest tests/test_detection.py -v
+(or just `pytest` from the repo root, which auto-discovers this file)
 """
 
 import numpy as np
 import pandas as pd
 import pytest
 
-from detection import (
+from pipeline.detection import (
     compute_baseline_sigma,
     flag_triggers,
     group_events,
@@ -149,16 +150,52 @@ def test_bad_quality_samples_do_not_trigger_events():
 
 
 def test_string_quality_flag_does_not_break_detection():
-    """Regression test for review comment: quality_flag arriving as a
-    STRING ('1') instead of int/float must not silently break the
-    equality check and drop every event."""
+    """Regression test for review comment: quality_flag arriving as the
+    real mission pipeline's categorical string ('good') must not silently
+    break the check and drop every event."""
     df = make_flat_noise_df(mean=100.0, std=2.0)
     df = inject_spike(df, "solexs_flux", start_idx=150, length=10, amplitude=40)
-    df["quality_flag"] = "1"  # string, not int — this is the bug scenario
+    df["quality_flag"] = "good"  # real pipeline's actual value, not "1"
 
     events = detect_flares(df, window=90, k=3.0, min_consecutive=3, decay_k=1.5)
     solexs_events = [e for e in events if e["instrument"] == "solexs"]
     assert len(solexs_events) == 1  # must still detect the spike, not silently drop it
+
+
+def test_bad_categorical_quality_flags_reject_samples():
+    """'gap' and 'saturated' (Prakriti's other real quality_flag values)
+    must be treated as bad, same as the old numeric 0 convention."""
+    df = make_flat_noise_df(mean=100.0, std=2.0)
+    df = inject_spike(df, "solexs_flux", start_idx=150, length=10, amplitude=40)
+    df["quality_flag"] = "good"
+    df.loc[150:159, "quality_flag"] = "saturated"  # mark the spike itself as bad
+
+    events = detect_flares(df, window=90, k=3.0, min_consecutive=3, decay_k=1.5)
+    solexs_events = [e for e in events if e["instrument"] == "solexs"]
+    assert len(solexs_events) == 0
+
+
+def test_event_includes_baseline_peak_flux_and_duration():
+    """New fields requested for ML/GOES cross-calibration: baseline_flux
+    at onset, peak_flux (raw units), and duration_minutes must be present
+    and sane."""
+    df = make_flat_noise_df(mean=100.0, std=2.0)
+    df = inject_spike(df, "solexs_flux", start_idx=150, length=10, amplitude=40)
+
+    events = detect_flares(df, window=90, k=3.0, min_consecutive=3, decay_k=1.5)
+    solexs_events = [e for e in events if e["instrument"] == "solexs"]
+    assert len(solexs_events) == 1
+
+    e = solexs_events[0]
+    assert "baseline_flux" in e
+    assert "peak_flux" in e
+    assert "duration_minutes" in e
+    # baseline should be close to the true flat background (~100), not the spike
+    assert 95 < e["baseline_flux"] < 105
+    # peak flux should reflect the injected spike (~140), well above baseline
+    assert e["peak_flux"] > e["baseline_flux"] + 20
+    # duration should be positive and roughly match the ~10-15 min spike+decay window
+    assert 0 < e["duration_minutes"] < 60
 
 
 if __name__ == "__main__":

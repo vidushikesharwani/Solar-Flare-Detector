@@ -98,7 +98,8 @@ def group_events(df: pd.DataFrame, flux_col: str, instrument: str,
 
     Returns a list of event dicts:
         {event_id, start_time, peak_time, end_time, peak_sigma,
-         flare_class (None here — filled in Step 4), instrument}
+         flare_class (None here — filled in Step 4), instrument,
+         baseline_flux, peak_flux, duration_minutes}
     """
     trigger_col = f"{flux_col}_trigger"
     n_sigma_col = f"{flux_col}_n_sigma"
@@ -110,16 +111,27 @@ def group_events(df: pd.DataFrame, flux_col: str, instrument: str,
 
     has_quality = "quality_flag" in df.columns
 
-    # FIX (review from Mayank): quality_flag can arrive as a string
-    # ("1", "1.0") instead of an int/float, depending on how it was
-    # serialized upstream (e.g. parquet round-tripped through object dtype,
-    # or read from CSV). A plain `== 1` comparison silently fails on
-    # strings — "1" == 1 is False in Python — which would make every
-    # sample look "bad" (or every sample look "good", depending on which
-    # way the bug leans) with NO error raised. Coerce to numeric up front
-    # so the comparison is type-safe regardless of how it arrived.
-    # Anything that fails to coerce (NaN, garbage) is treated as bad data.
-    quality_numeric = pd.to_numeric(df["quality_flag"], errors="coerce") if has_quality else None
+    # FIX (review from Mayank, round 2): quality_flag is NOT numeric on real
+    # mission data — Prakriti's ingestion pipeline emits categorical strings
+    # ("good", "gap", "saturated"), not 1/0. The earlier pd.to_numeric() fix
+    # coerced "good" to NaN, which silently marked 100% of real data as bad
+    # and produced zero detections. Fixed properly this time: normalize the
+    # raw value (strip whitespace, lowercase) and check membership against
+    # accepted "good" values, covering both real data ("good") and
+    # synthetic/test fixtures (1, "1", True).
+    _GOOD_VALUES = {"good", "1", "true"}
+
+    def is_good(i):
+        if not has_quality:
+            return True
+        val = df["quality_flag"].iloc[i]
+        if pd.isna(val):
+            return False
+        if isinstance(val, bool):
+            return val is True
+        if isinstance(val, (int, float, np.integer, np.floating)):
+            return float(val) == 1.0
+        return str(val).strip().lower() in _GOOD_VALUES
 
     events = []
     event_id_counter = 0
@@ -130,12 +142,6 @@ def group_events(df: pd.DataFrame, flux_col: str, instrument: str,
 
     # the currently CONFIRMED, active event (or None)
     active_event = None
-
-    def is_good(i):
-        if not has_quality:
-            return True
-        val = quality_numeric.iloc[i]
-        return pd.notna(val) and val == 1
 
     for i in range(len(df)):
         row = df.iloc[i]
@@ -154,15 +160,21 @@ def group_events(df: pd.DataFrame, flux_col: str, instrument: str,
                     # CONFIRMED: promote the candidate run into an active event
                     event_id_counter += 1
                     start_idx = candidate_start_idx
-                    window = df[n_sigma_col].iloc[start_idx:i + 1]
-                    peak_offset = int(window.values.argmax())
+                    window_sigma = df[n_sigma_col].iloc[start_idx:i + 1]
+                    window_flux = df[flux_col].iloc[start_idx:i + 1]
+                    peak_offset = int(window_sigma.values.argmax())
                     active_event = {
                         "event_id": f"{instrument}_{event_id_counter:04d}",
                         "start_time": df["timestamp"].iloc[start_idx],
                         "peak_time": df["timestamp"].iloc[start_idx + peak_offset],
                         "end_time": df["timestamp"].iloc[i],
-                        "peak_sigma": float(window.max()),
+                        "peak_sigma": float(window_sigma.max()),
                         "instrument": instrument,
+                        # background level right at flare onset — lets the
+                        # ML model normalize for solar-cycle background drift
+                        "baseline_flux": float(df[baseline_col].iloc[start_idx]),
+                        # max raw flux so far, for GOES-scale cross-calibration
+                        "peak_flux": float(window_flux.max()),
                     }
                     candidate_start_idx = None
                     candidate_len = 0
@@ -178,6 +190,8 @@ def group_events(df: pd.DataFrame, flux_col: str, instrument: str,
 
             if still_above_decay:
                 active_event["end_time"] = row["timestamp"]
+                if row[flux_col] > active_event["peak_flux"]:
+                    active_event["peak_flux"] = float(row[flux_col])
                 if row[n_sigma_col] > active_event["peak_sigma"]:
                     active_event["peak_sigma"] = float(row[n_sigma_col])
                     active_event["peak_time"] = row["timestamp"]
@@ -191,7 +205,15 @@ def group_events(df: pd.DataFrame, flux_col: str, instrument: str,
         # data ended while still active — close it out anyway
         events.append(active_event)
 
+    # duration_minutes: elapsed time from trigger start to decay cutoff —
+    # used downstream to filter sub-minute cosmic-ray hits from real flares
+    for e in events:
+        e["duration_minutes"] = round(
+            (e["end_time"] - e["start_time"]).total_seconds() / 60.0, 2
+        )
+
     return events
+
 
 
 def classify_flare(peak_sigma: float) -> str:
