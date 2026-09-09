@@ -117,3 +117,33 @@
   border-radius: 10px;
   color: #aaa;
 }
+.validation-cards {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 20px;
+  margin-top: 20px;
+}
+
+.validation-card {
+  padding: 20px;
+  border: 1px solid #333;
+  border-radius: 10px;
+  text-align: center;
+  background: #1a1a1a;
+}
+
+.validation-card h3 {
+  margin-bottom: 10px;
+}
+
+.validation-card p {
+  font-size: 28px;
+  font-weight: 700;
+  margin: 0;
+}
+
+@media (max-width: 700px) {
+  .validation-cards {
+    grid-template-columns: 1fr;
+  }
+}
