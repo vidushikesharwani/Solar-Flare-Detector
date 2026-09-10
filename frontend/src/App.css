@@ -1,12 +1,3 @@
-/* =========================================================
-   SOLAR FLARE DETECTOR
-   MAIN APPLICATION STYLES
-========================================================= */
-
-
-/* =========================================================
-   GLOBAL
-========================================================= */
 
 * {
   box-sizing: border-box;
@@ -57,9 +48,7 @@ select {
 }
 
 
-/* =========================================================
-   SPACE BACKGROUND
-========================================================= */
+/* BACKGROUND */
 
 .space-background {
   position: fixed;
@@ -173,139 +162,88 @@ select {
   }
 }
 
+/* Navbar */
 
-/* =========================================================
-   NAVBAR
-========================================================= */
-
-.navbar {
-  position: relative;
-  z-index: 10;
-
-  width: min(1400px, calc(100% - 48px));
-
-  margin: 0 auto;
-
-  min-height: 78px;
-
+.nav-links {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: center;
 
-  border-bottom: 1px solid rgba(100, 145, 205, 0.1);
+  gap: 6px;
+
+  margin-left: auto;
+  margin-right: 28px;
 }
 
-.nav-brand {
-  display: flex;
-  align-items: center;
-  gap: 13px;
-}
-
-.brand-orbit {
+.nav-link {
   position: relative;
 
-  width: 35px;
-  height: 35px;
+  padding: 9px 14px;
 
-  border: 1px solid rgba(105, 165, 235, 0.55);
+  border: 1px solid transparent;
+  border-radius: 9px;
 
-  border-radius: 50%;
+  color: #7188a8;
+
+  font-size: 0.66rem;
+  font-weight: 700;
+
+  letter-spacing: 0.1em;
+
+  text-decoration: none;
+
+  transition:
+    color 0.25s ease,
+    background 0.25s ease,
+    border-color 0.25s ease;
 }
 
-.brand-orbit::before {
+.nav-link:hover {
+  color: #b8ccef;
+
+  background: rgba(91, 156, 255, 0.06);
+
+  border-color: rgba(111, 168, 255, 0.1);
+}
+
+.nav-link.active {
+  color: #dce9ff;
+
+  background:
+    linear-gradient(
+      135deg,
+      rgba(45, 78, 128, 0.38),
+      rgba(67, 47, 112, 0.30)
+    );
+
+  border-color: rgba(111, 168, 255, 0.18);
+
+  box-shadow:
+    0 0 18px rgba(91, 156, 255, 0.05);
+}
+
+.nav-link.active::after {
   content: "";
 
   position: absolute;
 
-  inset: 7px;
+  left: 50%;
+  bottom: -5px;
 
-  border-radius: 50%;
+  width: 18px;
+  height: 2px;
 
-  background: #6faeff;
+  transform: translateX(-50%);
 
-  box-shadow:
-    0 0 10px rgba(111, 174, 255, 0.7);
-}
+  border-radius: 999px;
 
-.brand-orbit span {
-  position: absolute;
-
-  width: 6px;
-  height: 6px;
-
-  top: 2px;
-  left: 14px;
-
-  border-radius: 50%;
-
-  background: #a995ef;
-
-  animation: brandOrbit 4s linear infinite;
-}
-
-@keyframes brandOrbit {
-  from {
-    transform: rotate(0deg) translateX(14px);
-  }
-
-  to {
-    transform: rotate(360deg) translateX(14px);
-  }
-}
-
-.brand-title {
-  color: #e9f1ff;
-
-  font-size: 0.8rem;
-  font-weight: 800;
-
-  letter-spacing: 0.14em;
-}
-
-.brand-subtitle {
-  margin-top: 3px;
-
-  color: #607898;
-
-  font-size: 0.58rem;
-  font-weight: 700;
-
-  letter-spacing: 0.18em;
-}
-
-.nav-status {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-
-  color: #7188a8;
-
-  font-size: 0.65rem;
-  font-weight: 700;
-
-  letter-spacing: 0.12em;
-}
-
-.status-dot {
-  width: 7px;
-  height: 7px;
-
-  flex-shrink: 0;
-
-  border-radius: 50%;
-
-  background: #6fa8ff;
+  background: #79aef5;
 
   box-shadow:
-    0 0 9px rgba(111, 168, 255, 0.65);
-
-  animation: statusPulse 1.8s ease-in-out infinite;
+    0 0 8px rgba(121, 174, 245, 0.55);
 }
 
-
-/* =========================================================
-   MAIN DASHBOARD
-========================================================= */
+/* DASHBOARD */
 
 .dashboard {
   position: relative;
@@ -319,9 +257,7 @@ select {
 }
 
 
-/* =========================================================
-   HERO
-========================================================= */
+/* Hero section */
 
 .hero-section {
   position: relative;
@@ -436,9 +372,7 @@ select {
 }
 
 
-/* =========================================================
-   HERO DECORATION
-========================================================= */
+
 
 .hero-decoration {
   position: absolute;
@@ -498,9 +432,6 @@ select {
 }
 
 
-/* =========================================================
-   DASHBOARD CARDS
-========================================================= */
 
 .dashboard-card {
   position: relative;
@@ -632,9 +563,7 @@ select {
 }
 
 
-/* =========================================================
-   SOLAR ACTIVITY
-========================================================= */
+/* Solar Activity */
 
 .solar-activity {
   position: relative;
@@ -979,9 +908,7 @@ select {
 }
 
 
-/* =========================================================
-   THREAT GAUGE
-========================================================= */
+/* Threat Gauge */
 
 .threat-card {
   display: flex;
@@ -1154,9 +1081,7 @@ select {
 }
 
 
-/* =========================================================
-   FLUX SECTION
-========================================================= */
+/* Flux section */
 
 .flux-section {
   margin-bottom: 22px;
@@ -1301,10 +1226,7 @@ select {
   font-size: 0.8rem;
 }
 
-
-/* =========================================================
-   DETECTED EVENTS SECTION
-========================================================= */
+/* Detected event section */
 
 .events-section {
   margin-bottom: 22px;
@@ -1345,9 +1267,7 @@ select {
 }
 
 
-/* =========================================================
-   EVENTS PANEL
-========================================================= */
+/* events panel */
 
 .events-panel {
   padding: 0 30px;
@@ -1395,10 +1315,7 @@ select {
   line-height: 1.6;
 }
 
-
-/* =========================================================
-   EVENT TIMELINE
-========================================================= */
+/* timeline */
 
 .events-list,
 .events-preview {
@@ -1437,9 +1354,8 @@ select {
 }
 
 
-/* =========================================================
-   EVENT ROW
-========================================================= */
+/*EVENT ROW */
+
 
 .event-row {
   position: relative;
@@ -2847,4 +2763,268 @@ select {
     ) !important;
 
   opacity: 0.55 !important;
+}
+
+/* mobile interface update */
+@media (max-width: 700px) {
+  .navbar {
+    width: min(100% - 24px, 1400px);
+    min-height: auto;
+    padding: 14px 0;
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+
+  .nav-links {
+    order: 3;
+    width: 100%;
+    margin: 4px 0 0;
+    justify-content: center;
+    gap: 4px;
+  }
+
+  .nav-link {
+    padding: 8px 12px;
+    font-size: 0.8rem;
+  }
+}
+/* Navbar laptop update */
+.nav-links {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: auto;
+  margin-right: 28px;
+}
+
+.nav-link {
+  position: relative;
+  padding: 9px 14px;
+  color: rgba(220, 230, 245, 0.65);
+  text-decoration: none;
+  font-size: 0.88rem;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  border-radius: 8px;
+  transition: all 0.25s ease;
+}
+
+.nav-link:hover {
+  color: #eaf2ff;
+  background: rgba(91, 156, 255, 0.07);
+}
+
+.nav-link.active {
+  color: #ffffff;
+  background: rgba(91, 156, 255, 0.1);
+}
+
+.nav-link.active::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  bottom: 3px;
+  width: 28px;
+  height: 2px;
+  border-radius: 2px;
+  background: #5b9cff;
+  transform: translateX(-50%);
+}
+/* =========================================================
+   FINAL VISUAL FIXES
+   ========================================================= */
+
+/* ---------- TOP-LEFT BRAND ---------- */
+
+.nav-brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  text-decoration: none;
+}
+
+/* Orbiting logo */
+.brand-orbit {
+  position: relative;
+  width: 38px;
+  height: 38px;
+  flex-shrink: 0;
+
+  border: 1px solid rgba(91, 156, 255, 0.55);
+  border-radius: 50%;
+
+  box-shadow:
+    0 0 14px rgba(91, 156, 255, 0.18),
+    inset 0 0 10px rgba(91, 156, 255, 0.08);
+}
+
+/* tilted orbit */
+.brand-orbit::before {
+  content: "";
+  position: absolute;
+
+  width: 48px;
+  height: 18px;
+
+  left: -6px;
+  top: 9px;
+
+  border: 1px solid rgba(167, 139, 250, 0.55);
+  border-radius: 50%;
+
+  transform: rotate(-25deg);
+}
+
+/* orbiting particle */
+.brand-orbit::after {
+  content: "";
+
+  position: absolute;
+
+  width: 6px;
+  height: 6px;
+
+  top: 3px;
+  right: 3px;
+
+  border-radius: 50%;
+
+  background: #a78bfa;
+
+  box-shadow: 0 0 10px rgba(167, 139, 250, 0.9);
+}
+
+
+/* ---------- SMALL TOP-LEFT TITLE ---------- */
+
+.brand-title {
+  font-size: 0.95rem;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  white-space: nowrap;
+  color: #ffffff;
+}
+
+.brand-subtitle {
+  font-size: 0.68rem;
+  opacity: 0.5;
+  margin-top: 2px;
+  color: #ffffff;
+}
+
+
+/* ---------- NAVBAR ACTIVE TAB ---------- */
+/* DO NOT change navbar positioning */
+
+.nav-link.active::after {
+  content: "";
+
+  position: absolute;
+
+  left: 50%;
+  bottom: 3px;
+
+  width: 28px;
+  height: 2px;
+
+  transform: translateX(-50%);
+
+  border-radius: 2px;
+
+  background: #5b9cff;
+}
+
+
+/* ---------- MOBILE ---------- */
+
+@media (max-width: 700px) {
+
+  .brand-orbit {
+    width: 32px;
+    height: 32px;
+  }
+
+  .brand-orbit::before {
+    width: 40px;
+    height: 15px;
+    left: -5px;
+    top: 8px;
+  }
+
+  .brand-title {
+    font-size: 0.82rem;
+  }
+
+  .brand-subtitle {
+    font-size: 0.6rem;
+  }
+}
+/* ---------- SYSTEM READY: TOP RIGHT ---------- */
+
+.navbar {
+  position: relative;
+}
+
+.nav-status {
+  position: absolute;
+  right: 0;
+  top: 50%;
+  transform: translateY(-50%);
+
+  display: flex;
+  align-items: center;
+  gap: 8px;
+
+  margin: 0;
+  white-space: nowrap;
+  z-index: 5;
+}
+
+.nav-status .status-dot {
+  width: 8px;
+  height: 8px;
+  flex-shrink: 0;
+  border-radius: 50%;
+}
+/* ---------- SYSTEM READY BADGE ---------- */
+
+.nav-status {
+  position: absolute;
+  right: 0;
+  top: 50%;
+  transform: translateY(-50%);
+
+  display: flex;
+  align-items: center;
+  gap: 7px;
+
+  padding: 7px 12px;
+
+  border: 1px solid rgba(91, 156, 255, 0.25);
+  border-radius: 9px;
+
+  background: rgba(91, 156, 255, 0.06);
+
+  box-shadow: 0 0 14px rgba(91, 156, 255, 0.06);
+
+  white-space: nowrap;
+  z-index: 5;
+}
+
+.nav-status {
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  color: rgba(225, 235, 250, 0.82);
+}
+
+.nav-status .status-dot {
+  width: 7px;
+  height: 7px;
+  flex-shrink: 0;
+
+  border-radius: 50%;
+
+  background: #63d99b;
+  box-shadow: 0 0 8px rgba(99, 217, 155, 0.7);
 }
