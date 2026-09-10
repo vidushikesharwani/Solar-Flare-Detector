@@ -317,3 +317,64 @@ def test_load_goes_catalog_non_list_returns_empty_list():
         assert load_goes_catalog() == []
 
 
+def test_flare_event_schema_with_accuracy_metadata():
+    from backend.models import FlareEvent
+    event_data = {
+        "event_id": "solexs_0001",
+        "start_time": "2026-01-01T10:00:00Z",
+        "peak_time": "2026-01-01T10:05:00Z",
+        "end_time": "2026-01-01T10:15:00Z",
+        "peak_sigma": 8.5,
+        "flare_class": "M",
+        "instrument": "SoLEXS",
+        "background_flux": 105.2,
+        "peak_flux": 162.8,
+        "duration_minutes": 15.0,
+        "extra_future_metric": 42.0,
+    }
+    evt = FlareEvent(**event_data)
+    assert evt.background_flux == 105.2
+    assert evt.peak_flux == 162.8
+    assert evt.duration_minutes == 15.0
+    dumped = evt.model_dump()
+    assert dumped["duration_minutes"] == 15.0
+
+
+def test_get_metrics_flexible_parsing():
+    alt_metrics = {
+        "accuracy": 0.88,
+        "per_class": {
+            "C": {"precision": 0.85, "recall": 0.80, "f1_score": 0.82, "support": 40},
+            "M": {"precision": 0.90, "recall": 0.88, "f1_score": 0.89, "support": 25},
+        }
+    }
+    with patch("backend.data_loader.load_metrics", return_value=alt_metrics):
+        resp = client.get("/api/metrics")
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["overall_accuracy"] == 0.88
+        assert len(data["per_class_metrics"]) == 2
+        classes = {c["flare_class"]: c for c in data["per_class_metrics"]}
+        assert classes["C"]["f1"] == 0.82
+        assert classes["M"]["f1"] == 0.89
+
+
+def test_load_flux_finds_aligned_lightcurve():
+    from pathlib import Path
+    from backend.data_loader import load_flux
+    with patch("backend.data_loader._find_latest") as mock_find:
+        # First call for aligned_flux returns None, second call for aligned_lightcurve returns a path
+        mock_find.side_effect = lambda pat: Path("aligned_lightcurve.parquet") if "lightcurve" in pat else None
+        with patch("backend.data_loader._load_parquet") as mock_load:
+            import pandas as pd
+            mock_load.return_value = pd.DataFrame({
+                "timestamp": ["2026-01-01T00:00:00Z"],
+                "solexs_flux": [100.0],
+                "hel1os_flux": [50.0],
+            })
+            res = load_flux()
+            assert res is not None
+            assert len(res) == 1
+
+
+

@@ -297,7 +297,20 @@ async def get_metrics():
             detail="No metrics available yet — run the training pipeline first.",
         )
 
-    per_class = [ClassMetrics(**m) for m in metrics.get("per_class_metrics", [])]
+    per_class_raw = metrics.get("per_class_metrics")
+    if per_class_raw is None and isinstance(metrics.get("per_class"), dict):
+        per_class_raw = []
+        for cls, v in metrics["per_class"].items():
+            if isinstance(v, dict):
+                per_class_raw.append({
+                    "flare_class": cls,
+                    "precision": v.get("precision", 0.0),
+                    "recall": v.get("recall", 0.0),
+                    "f1": v.get("f1", v.get("f1_score", 0.0)),
+                    "support": v.get("support", 0),
+                })
+
+    per_class = [ClassMetrics(**m) for m in (per_class_raw or [])]
     training_curve = [TrainingPoint(**t) for t in metrics.get("training_curve", [])]
     feature_importance = [FeatureImportance(**f) for f in metrics.get("feature_importance", [])]
 
@@ -305,7 +318,7 @@ async def get_metrics():
         per_class_metrics=per_class,
         training_curve=training_curve,
         feature_importance=feature_importance,
-        overall_accuracy=metrics.get("overall_accuracy", 0.0),
+        overall_accuracy=metrics.get("overall_accuracy", metrics.get("accuracy", 0.0)),
         model_version=metrics.get("model_version"),
         trained_at=metrics.get("trained_at"),
     )

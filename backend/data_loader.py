@@ -66,7 +66,11 @@ def load_flux(limit: int | None = None) -> list[dict] | None:
     Contract columns: timestamp, solexs_flux, hel1os_flux, quality_flag
     API response exposes: timestamp, solexs_flux, hel1os_flux  (no quality_flag)
     """
-    path = _find_latest("aligned_flux*.parquet")
+    path = (
+        _find_latest("aligned_flux*.parquet")
+        or _find_latest("aligned_lightcurve*.parquet")
+        or _find_latest("aligned_*.parquet")
+    )
     df = _load_parquet(path)
     if df is None:
         logger.warning("No aligned flux parquet found in %s", DATA_PROCESSED)

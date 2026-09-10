@@ -7,7 +7,7 @@ DO NOT change these schemas without raising a GitHub issue first.
 from __future__ import annotations
 
 from typing import Any, Optional
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ConfigDict
 
 
 # ─── /api/flux ────────────────────────────────────────────────────────────────
@@ -31,6 +31,8 @@ class FluxResponse(BaseModel):
 
 class FlareEvent(BaseModel):
     """Detected flare event (Aditi's detection engine output)."""
+    model_config = ConfigDict(extra="ignore")
+
     event_id: str
     start_time: str
     peak_time: str
@@ -38,6 +40,9 @@ class FlareEvent(BaseModel):
     peak_sigma: float = Field(..., description="Peak flux above baseline in σ units")
     flare_class: str = Field(..., description="A / B / C / M / X")
     instrument: str = Field(..., description="SoLEXS | HEL1OS")
+    background_flux: Optional[float] = Field(None, description="Baseline flux at event onset")
+    peak_flux: Optional[float] = Field(None, description="Maximum flux reached during event")
+    duration_minutes: Optional[float] = Field(None, description="Event duration in minutes")
 
 
 class EventsResponse(BaseModel):
@@ -49,13 +54,15 @@ class EventsResponse(BaseModel):
 
 class Prediction(BaseModel):
     """XGBoost ML prediction (Vidushi's ML pipeline output)."""
+    model_config = ConfigDict(extra="ignore")
+
     timestamp: str
     flare_probability: float = Field(..., ge=0.0, le=1.0)
-    predicted_class: str = Field(..., description="A / B / C / M / X")
+    predicted_class: str = Field(..., description="A / B / C / M / X / NO_FLARE / quiet")
     confidence: float = Field(..., ge=0.0, le=1.0)
-    top_features: dict[str, float] = Field(
+    top_features: Any = Field(
         default_factory=dict,
-        description="SHAP values keyed by feature name"
+        description="SHAP values keyed by feature name or list of feature objects"
     )
 
 
