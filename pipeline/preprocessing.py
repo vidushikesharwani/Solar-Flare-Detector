@@ -431,10 +431,10 @@ def _cli():
     parser.add_argument("solexs_path", help="Path to a SoLEXS FITS file")
     parser.add_argument("hel1os_path", help="Path to a HEL1OS FITS file")
     parser.add_argument(
-        "-o", "--output",
-        default="data/processed/aligned_lightcurve.parquet",
-        help="Output parquet path (default: data/processed/aligned_lightcurve.parquet)",
-    )
+    "-o", "--output",
+    default="data/processed/aligned_flux.parquet",
+    help="Output parquet path (default: data/processed/aligned_flux.parquet)",
+)
     parser.add_argument("-v", "--verbose", action="store_true")
     args = parser.parse_args()
  
