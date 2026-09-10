@@ -118,7 +118,7 @@ function Timeline() {
 
               <button
                 onClick={() =>
-                  (window.location.href = `/dashboard?event=${event.event_id}`)
+                  (window.location.href = `/?event=${event.event_id}`)
                 }
               >
                 View on Dashboard
