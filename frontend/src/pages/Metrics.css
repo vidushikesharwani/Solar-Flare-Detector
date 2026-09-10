@@ -1,0 +1,149 @@
+.metrics-page {
+  min-height: 100vh;
+  padding: 40px;
+  background: #0b1020;
+  color: white;
+}
+
+.metrics-page h1 {
+  margin-bottom: 8px;
+  font-size: 36px;
+}
+
+.metrics-description {
+  color: #aab3c5;
+  margin-bottom: 30px;
+}
+
+.metrics-cards {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 20px;
+  max-width: 1000px;
+  margin-bottom: 30px;
+}
+
+.metric-card {
+  background: #151c30;
+  border: 1px solid #2d3855;
+  border-radius: 14px;
+  padding: 24px;
+}
+
+.metric-card h3 {
+  color: #aab3c5;
+  font-size: 15px;
+  margin-bottom: 12px;
+}
+
+.metric-card p {
+  font-size: 28px;
+  font-weight: bold;
+  margin: 0;
+}
+
+.chart-placeholder {
+  max-width: 1000px;
+  background: #151c30;
+  border: 1px solid #2d3855;
+  border-radius: 14px;
+  padding: 24px;
+  margin-bottom: 20px;
+}
+
+.chart-placeholder h2 {
+  margin-top: 0;
+}
+
+.chart-placeholder p {
+  color: #aab3c5;
+}
+
+@media (max-width: 800px) {
+  .metrics-cards {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 500px) {
+  .metrics-cards {
+    grid-template-columns: 1fr;
+  }
+
+  .metrics-page {
+    padding: 20px;
+  }
+}
+/* Per-Class Metrics Table */
+
+.metrics-table-wrapper {
+  width: 100%;
+  overflow-x: auto;
+  margin-top: 20px;
+}
+
+.metrics-table {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 500px;
+}
+
+.metrics-table th,
+.metrics-table td {
+  padding: 14px 16px;
+  text-align: center;
+  border-bottom: 1px solid #333;
+}
+
+.metrics-table th {
+  font-weight: 600;
+  background: #1a1a1a;
+}
+
+.metrics-table td:first-child,
+.metrics-table th:first-child {
+  text-align: left;
+}
+
+.metrics-table tbody tr:hover {
+  background: #1a1a1a;
+}
+
+.table-empty-state {
+  text-align: center;
+  padding: 25px;
+  margin-top: 15px;
+  border: 1px solid #333;
+  border-radius: 10px;
+  color: #aaa;
+}
+.validation-cards {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 20px;
+  margin-top: 20px;
+}
+
+.validation-card {
+  padding: 20px;
+  border: 1px solid #333;
+  border-radius: 10px;
+  text-align: center;
+  background: #1a1a1a;
+}
+
+.validation-card h3 {
+  margin-bottom: 10px;
+}
+
+.validation-card p {
+  font-size: 28px;
+  font-weight: 700;
+  margin: 0;
+}
+
+@media (max-width: 700px) {
+  .validation-cards {
+    grid-template-columns: 1fr;
+  }
+}
